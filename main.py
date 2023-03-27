@@ -226,6 +226,8 @@ class MainWindow(tk.Frame):
         if self.ready_to_show:
             self.optionmenu_map_color.config(state=tk.ACTIVE)
             self.button_apply.config(state=tk.ACTIVE)
+            self.color_range_1.set(round(self.calibrator.map_data.min()))
+            self.color_range_2.set(round(self.calibrator.map_data.max()))
             self.imshow()
             self.update_plot()
 
