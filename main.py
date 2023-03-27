@@ -143,6 +143,7 @@ class MainWindow(tk.Frame):
         self.calibrator.set_dimension(int(self.dimension.get()[0]))
         self.calibrator.set_material(self.material.get())
         self.calibrator.set_function(self.function.get())
+        self.calibrator.set_search_width(5)
         ok = self.calibrator.calibrate()
         if not ok:
             messagebox.showerror('Error', 'Peaks not found.')
@@ -251,7 +252,7 @@ class MainWindow(tk.Frame):
         self.file_to_download.set(indices)
 
     def add_all(self) -> None:
-        all_indices = list(range(len(self.calibrator.map_data.shape[0])))
+        all_indices = list(range(self.calibrator.num_place))
         self.file_to_download.set(all_indices)
 
     def delete(self, event=None) -> None:
