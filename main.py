@@ -18,7 +18,6 @@ class MainWindow(tk.Frame):
         self.master.geometry(f'{self.width_master}x{self.height_master}')
 
         self.calibrator = RayleighCalibrator()
-        self.ready_to_show = False
         self.index_to_show = 0
 
         self.line = None
@@ -36,6 +35,8 @@ class MainWindow(tk.Frame):
             self.width_canvas /= 2
             self.height_canvas /= 2
         fig, self.ax = plt.subplots(1, 2, figsize=(self.width_canvas / dpi, self.height_canvas / dpi), dpi=dpi)
+        self.horizontal_line = self.ax[0].axhline(color='k', lw=0.8, ls='--')
+        self.horizontal_line.set_visible(False)
         self.canvas = FigureCanvasTkAgg(fig, self.master)
         self.canvas.get_tk_widget().grid(row=0, column=0, rowspan=3)
         toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=False)
@@ -137,19 +138,19 @@ class MainWindow(tk.Frame):
                                      font=('Arial', 30))
 
     def calibrate(self) -> None:
+        self.calibrator.reset_data()
         self.calibrator.set_initial_xdata(self.center.get())
         self.calibrator.set_dimension(int(self.dimension.get()[0]))
         self.calibrator.set_material(self.material.get())
         self.calibrator.set_function(self.function.get())
-        self.calibrator.reset_data()
         ok = self.calibrator.calibrate()
         if not ok:
             messagebox.showerror('Error', 'Peaks not found.')
             return
         self.ax[1].cla()
         self.calibrator.show_fit_result(self.ax[1])
-        self.canvas.draw()
         self.line = None
+        self.imshow()  # to update the xticklabels
 
     def on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
         if event.ydata is None:
@@ -217,13 +218,16 @@ class MainWindow(tk.Frame):
                 if material in filename:
                     self.material.set(material)
             self.button_calibrate.config(state=tk.ACTIVE)
+
+            self.ax[1].cla()
+            self.ax[1].plot(self.calibrator.xdata, self.calibrator.ydata, color='k')
+            self.canvas.draw()
+
         else:  # raw data
             self.calibrator.load_raw(filename)
             self.filename_raw.set(os.path.basename(filename))
             self.folder = os.path.dirname(filename)
-            self.ready_to_show = True
 
-        if self.ready_to_show:
             self.optionmenu_map_color.config(state=tk.ACTIVE)
             self.button_apply.config(state=tk.ACTIVE)
             self.color_range_1.set(round(self.calibrator.map_data.min()))

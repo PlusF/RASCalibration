@@ -96,7 +96,8 @@ class RayleighCalibrator(Calibrator):
     def reset_data(self):
         if self.reader_raw is None or self.reader_ref is None:
             raise ValueError('Load data before reset.')
-        self.set_data(self.reader_ref.xdata, self.reader_ref.spectra)
+        spec_sum = self.reader_ref.spectra.sum(axis=0)
+        self.set_data(self.reader_ref.xdata, spec_sum)
 
     def show_fit_result(self, ax: plt.Axes) -> None:
         ax.plot(self.xdata, self.ydata, color='k')
@@ -106,16 +107,14 @@ class RayleighCalibrator(Calibrator):
             ax.vlines(fitted_x, ymin, ymax, color='r', linewidth=1)
 
     def imshow(self, ax: plt.Axes, color_range: list, cmap: str) -> None:
-        # aspect = self.map_data.shape[0] / self.map_data.shape[1]
-        # ax.imshow(self.map_data, cmap=cmap, aspect=1/aspect, origin='lower')
-        xtick = np.arange(0, 1024, 128)
-        ax.set_xticks(xtick)
-        ax.set_xticklabels(self.xdata[xtick])
-        ax.set_yticks(range(self.reader_raw.spectra.shape[0]))
-        ax.set_yticklabels(map(lambda x: round(np.linalg.norm(x)), self.reader_raw.pos_arr))
-
         mesh = ax.pcolormesh(self.map_data, cmap=cmap)
         mesh.set_clim(*color_range)
+
+        xtick = np.arange(0, 1024, 128)
+        ax.set_xticks(xtick)
+        ax.set_xticklabels(map(round, self.xdata[xtick]))
+        ax.set_yticks(range(self.reader_raw.spectra.shape[0]))
+        ax.set_yticklabels(map(lambda x: round(np.linalg.norm(x)), self.reader_raw.pos_arr))
 
 
 def test():
