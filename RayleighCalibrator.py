@@ -68,7 +68,7 @@ class RayleighCalibrator(Calibrator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.center: float = 630
-        self.wavelength_range = 130
+        self.wavelength_range = 134
         self.reader_raw = FileReader()
         self.reader_ref = FileReader()
 

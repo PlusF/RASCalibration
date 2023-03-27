@@ -143,13 +143,15 @@ class MainWindow(tk.Frame):
         self.calibrator.set_dimension(int(self.dimension.get()[0]))
         self.calibrator.set_material(self.material.get())
         self.calibrator.set_function(self.function.get())
-        self.calibrator.set_search_width(5)
-        ok = self.calibrator.calibrate()
+        self.calibrator.set_search_width(10)
+        ok = self.calibrator.calibrate(easy=True)
         if not ok:
             messagebox.showerror('Error', 'Peaks not found.')
             return
         self.ax[1].cla()
         self.calibrator.show_fit_result(self.ax[1])
+        self.canvas.draw()
+
         self.line = None
         self.imshow()  # to update the xticklabels
 
@@ -172,6 +174,8 @@ class MainWindow(tk.Frame):
         self.update_plot()
 
     def imshow(self, event=None) -> None:
+        if self.calibrator.map_data is None:
+            return
         self.ax[0].cla()
         self.horizontal_line = self.ax[0].axhline(color='k', lw=0.8, ls='--')
         self.horizontal_line.set_visible(True)
