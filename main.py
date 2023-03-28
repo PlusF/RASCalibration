@@ -1,5 +1,6 @@
 import os
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox, filedialog
 from tkinterdnd2 import TkinterDnD, DND_FILES
 import matplotlib.pyplot as plt
@@ -64,7 +65,7 @@ class MainWindow(tk.Frame):
         label_filename_ref = tk.Label(frame_data, textvariable=self.filename_ref)
         label_center = tk.Label(frame_data, text='Center [nm]:')
         self.center = tk.DoubleVar(value=self.calibrator.center)
-        entry_center = tk.Entry(frame_data, textvariable=self.center, width=7, justify=tk.CENTER)
+        combobox_center = ttk.Combobox(frame_data, textvariable=self.center, values=[500, 630, 760], width=7, justify=tk.CENTER)
         self.material = tk.StringVar(value=self.calibrator.get_material_list()[0])
         optionmenu_material = tk.OptionMenu(frame_data, self.material, *self.calibrator.get_material_list())
         self.dimension = tk.StringVar(value=self.calibrator.get_dimension_list()[0])
@@ -78,7 +79,7 @@ class MainWindow(tk.Frame):
         label_ref.grid(row=1, column=0)
         label_filename_ref.grid(row=1, column=1, columnspan=2)
         label_center.grid(row=2, column=0)
-        entry_center.grid(row=2, column=1, columnspan=2)
+        combobox_center.grid(row=2, column=1, columnspan=2)
         optionmenu_material.grid(row=3, column=0)
         optionmenu_dimension.grid(row=3, column=1)
         optionmenu_function.grid(row=3, column=2)
