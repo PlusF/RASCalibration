@@ -110,7 +110,7 @@ class RayleighCalibrator(Calibrator):
         mesh = ax.pcolormesh(self.map_data, cmap=cmap)
         mesh.set_clim(*color_range)
 
-        xtick = np.arange(0, 1024, 128)
+        xtick = np.arange(0, self.xdata.shape[0], 128)
         ax.set_xticks(xtick)
         ax.set_xticklabels(map(round, self.xdata[xtick]))
         ax.set_yticks(range(self.reader_raw.spectra.shape[0]))
