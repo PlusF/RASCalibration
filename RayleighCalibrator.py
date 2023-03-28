@@ -115,22 +115,3 @@ class RayleighCalibrator(Calibrator):
         ax.set_xticklabels(map(round, self.xdata[xtick]))
         ax.set_yticks(range(self.reader_raw.spectra.shape[0]))
         ax.set_yticklabels(map(lambda x: round(np.linalg.norm(x)), self.reader_raw.pos_arr))
-
-
-def test():
-    filename_ref = '/Users/kanedaryoutarou/Desktop/1d.txt'
-    filename_raw = '/Users/kanedaryoutarou/Desktop/2d.txt'
-
-    rc = RayleighCalibrator()
-    rc.load_raw(filename_raw)
-    rc.load_ref(filename_ref)
-
-    print(rc.reader_raw)
-    print(rc.reader_raw.pos_arr)
-    print(rc.reader_raw.xdata.shape)
-    print(rc.reader_raw.spectra.shape)
-    print(rc.reader_ref)
-
-
-if __name__ == '__main__':
-    test()
