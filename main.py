@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox, filedialog
 from tkinterdnd2 import TkinterDnD, DND_FILES
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.backend_bases
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -96,13 +97,15 @@ class MainWindow(tk.Frame):
         scrollbar.config(command=self.listbox.yview)
         self.button_add = tk.Button(frame_download, text='ADD', command=self.add)
         self.button_add_all = tk.Button(frame_download, text='ADD ALL', command=self.add_all)
+        self.button_save_each = tk.Button(frame_download, text='SAVE EACH', command=self.save_each)
         self.button_save = tk.Button(frame_download, text='SAVE', command=self.save)
 
         self.listbox.grid(row=0, column=0, columnspan=3)
         scrollbar.grid(row=0, column=2)
         self.button_add.grid(row=1, column=0)
         self.button_add_all.grid(row=1, column=1)
-        self.button_save.grid(row=1, column=2)
+        self.button_save_each.grid(row=1, column=2)
+        self.button_save.grid(row=1, column=3)
 
         # frame plot
         self.color_range_1 = tk.DoubleVar(value=0)
@@ -199,7 +202,7 @@ class MainWindow(tk.Frame):
                 self.ax[1].cla()
         self.line = self.ax[1].plot(
             self.calibrator.xdata,
-            self.calibrator.map_data[self.index_to_show],
+            self.calibrator.map_data_accumulated[self.index_to_show],
             label=str(self.index_to_show), color='r', linewidth=0.8)
         self.ax[1].legend()
         self.canvas.draw()
@@ -236,8 +239,8 @@ class MainWindow(tk.Frame):
 
             self.optionmenu_map_color.config(state=tk.ACTIVE)
             self.button_apply.config(state=tk.ACTIVE)
-            self.color_range_1.set(round(self.calibrator.map_data.min()))
-            self.color_range_2.set(round(self.calibrator.map_data.max()))
+            self.color_range_1.set(round(self.calibrator.map_data_accumulated.min()))
+            self.color_range_2.set(round(self.calibrator.map_data_accumulated.max()))
             self.imshow()
             self.update_plot()
 
@@ -266,7 +269,7 @@ class MainWindow(tk.Frame):
         for idx in sorted(list(self.listbox.curselection()), reverse=True):
             self.listbox.delete(idx)
 
-    def save(self) -> None:
+    def save_each(self) -> None:
         if not self.file_to_download.get():
             return
 
@@ -276,7 +279,7 @@ class MainWindow(tk.Frame):
 
         xdata = self.calibrator.xdata
         for index in self.file_to_download.get():
-            spectrum = self.calibrator.map_data[index]
+            spectrum = self.calibrator.map_data_accumulated[index]
             abs_path_raw = os.path.join(self.folder, self.filename_raw.get())
             if self.filename_ref.get() == 'please drag & drop!':
                 abs_path_ref = ''
@@ -290,6 +293,38 @@ class MainWindow(tk.Frame):
 
                 for x, y in zip(xdata, spectrum):
                     f.write(f'{x},{y}\n')
+
+    def save(self) -> None:
+        if self.filename_ref.get() == 'please drag & drop!':
+            messagebox.showerror('Error', 'No calibration performed. No need to save.')
+            return
+
+        filename = filedialog.asksaveasfilename(initialdir=self.folder)
+        if not filename:
+            return
+
+        pos_data = self.calibrator.reader_raw.pos_arr
+        pos_data = np.vstack([np.array(['pos_x', 'pos_y', 'pos_z']), pos_data]).T.astype(str)
+
+        xdata = np.array(self.calibrator.xdata)
+        map_data = self.calibrator.map_data
+        map_data = np.vstack([xdata, map_data]).T.astype(str)
+
+        data = np.vstack([pos_data, map_data])
+
+        abs_path_raw = os.path.join(self.folder, self.filename_raw.get())
+        abs_path_ref = os.path.join(self.folder, self.filename_ref.get())
+        with open(filename, 'w') as f:
+            f.write(f'# abs_path_raw: {abs_path_raw}\n')
+            f.write(f'# abs_path_ref: {abs_path_ref}\n')
+            f.write(f'# calibration: {self.calibrator.calibration_info}\n\n')
+            f.write(f'# time: {self.calibrator.reader_raw.time}\n')
+            f.write(f'# integration: {self.calibrator.reader_raw.integration}\n')
+            f.write(f'# accumulation: {self.calibrator.reader_raw.accumulate()}\n')
+            f.write(f'# interval: {self.calibrator.reader_raw.interval}\n')
+
+            for d in data:
+                f.write(f'{",".join(d)}\n')
 
     def quit(self) -> None:
         self.master.quit()

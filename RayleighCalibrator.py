@@ -14,8 +14,10 @@ class FileReader:
         self.df: pd.DataFrame = pd.DataFrame()
 
         self.pos_arr: np.ndarray = None
+        self.pos_arr_accumulated: np.ndarray = None
         self.xdata: np.ndarray = None
         self.spectra: np.ndarray = None
+        self.spectra_accumulated: np.ndarray = None
 
     def __str__(self):
         return f'filename: {self.filename}\n' \
@@ -37,7 +39,7 @@ class FileReader:
 
         self.pos_arr = self.df.loc['pos_x':'pos_z'].values.T
         self.xdata = self.df.index[3:].values.astype(float)
-        self.spectra = self.df.loc['0':].values.T
+        self.spectra = self.df.iloc[3:].values.astype(float).T
 
     def accumulate(self):
         spectra_accumulated = np.empty([0, self.xdata.shape[0]])
@@ -60,8 +62,8 @@ class FileReader:
                 pos_arr_new.append(pos_check)
                 tmp_accumulated = np.zeros(self.xdata.shape[0])
 
-        self.pos_arr = np.array(pos_arr_new)
-        self.spectra = spectra_accumulated
+        self.pos_arr_accumulated = np.array(pos_arr_new)
+        self.spectra_accumulated = spectra_accumulated
 
 
 class RayleighCalibrator(Calibrator):
@@ -73,6 +75,7 @@ class RayleighCalibrator(Calibrator):
         self.reader_ref = FileReader()
 
         self.map_data: np.ndarray = None
+        self.map_data_accumulated: np.ndarray = None
         self.num_place: int = 0
 
         self.set_measurement('Rayleigh')
@@ -81,7 +84,8 @@ class RayleighCalibrator(Calibrator):
         self.reader_raw.load(filename)
         self.reader_raw.accumulate()
         self.xdata = self.reader_raw.xdata.copy()
-        self.map_data = self.reader_raw.spectra
+        self.map_data = self.reader_raw.spectra.copy()
+        self.map_data_accumulated = self.reader_raw.spectra_accumulated.copy()
         self.num_place = self.reader_raw.spectra.shape[0]
 
     def load_ref(self, filename):
@@ -107,11 +111,11 @@ class RayleighCalibrator(Calibrator):
             ax.vlines(fitted_x, ymin, ymax, color='r', linewidth=1)
 
     def imshow(self, ax: plt.Axes, color_range: list, cmap: str) -> None:
-        mesh = ax.pcolormesh(self.map_data, cmap=cmap)
+        mesh = ax.pcolormesh(self.map_data_accumulated, cmap=cmap)
         mesh.set_clim(*color_range)
 
         xtick = np.arange(0, self.xdata.shape[0], 128)
         ax.set_xticks(xtick)
         ax.set_xticklabels(map(round, self.xdata[xtick]))
-        ax.set_yticks(range(self.reader_raw.spectra.shape[0]))
-        ax.set_yticklabels(map(lambda x: round(np.linalg.norm(x)), self.reader_raw.pos_arr))
+        ax.set_yticks(range(self.map_data_accumulated.shape[0]))
+        ax.set_yticklabels(map(lambda x: round(np.linalg.norm(x)), self.reader_raw.pos_arr_accumulated))
