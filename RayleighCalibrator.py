@@ -14,7 +14,7 @@ class FileReader:
         self.df: pd.DataFrame = pd.DataFrame()
 
         self.pos_arr: np.ndarray = None
-        self.pos_arr_accumulated: np.ndarray = None
+        self.pos_arr_relative_accumulated: np.ndarray = None
         self.xdata: np.ndarray = None
         self.spectra: np.ndarray = None
         self.spectra_accumulated: np.ndarray = None
@@ -46,6 +46,7 @@ class FileReader:
         pos_arr_new = []
 
         tmp_accumulated = np.zeros(self.xdata.shape[0])
+        pos_origin = self.pos_arr[0]
         pos_check = self.pos_arr[0]
 
         for i, (pos, spec) in enumerate(zip(self.pos_arr, self.spectra)):
@@ -59,10 +60,10 @@ class FileReader:
 
             if i % self.accumulation == self.accumulation - 1:
                 spectra_accumulated = np.append(spectra_accumulated, tmp_accumulated.reshape([1, self.xdata.shape[0]]), axis=0)
-                pos_arr_new.append(pos_check)
+                pos_arr_new.append(pos_check - pos_origin)
                 tmp_accumulated = np.zeros(self.xdata.shape[0])
 
-        self.pos_arr_accumulated = np.array(pos_arr_new)
+        self.pos_arr_relative_accumulated = np.array(pos_arr_new)
         self.spectra_accumulated = spectra_accumulated
 
 
@@ -86,7 +87,7 @@ class RayleighCalibrator(Calibrator):
         self.xdata = self.reader_raw.xdata.copy()
         self.map_data = self.reader_raw.spectra.copy()
         self.map_data_accumulated = self.reader_raw.spectra_accumulated.copy()
-        self.num_place = self.reader_raw.spectra.shape[0]
+        self.num_place = self.reader_raw.spectra_accumulated.shape[0]
 
     def load_ref(self, filename):
         self.reader_ref.load(filename)
@@ -118,4 +119,4 @@ class RayleighCalibrator(Calibrator):
         ax.set_xticks(xtick)
         ax.set_xticklabels(map(round, self.xdata[xtick]))
         ax.set_yticks(range(self.map_data_accumulated.shape[0]))
-        ax.set_yticklabels(map(lambda x: round(np.linalg.norm(x)), self.reader_raw.pos_arr_accumulated))
+        ax.set_yticklabels(map(lambda x: round(np.linalg.norm(x)), self.reader_raw.pos_arr_relative_accumulated))

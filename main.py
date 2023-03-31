@@ -53,9 +53,9 @@ class MainWindow(tk.Frame):
         frame_data = tk.LabelFrame(self.master, text='Data')
         frame_download = tk.LabelFrame(self.master, text='Download')
         frame_plot = tk.LabelFrame(self.master, text='Plot')
-        frame_data.grid(row=0, column=1)
+        frame_data.grid(row=0, column=1, columnspan=2)
         frame_download.grid(row=1, column=1)
-        frame_plot.grid(row=2, column=1)
+        frame_plot.grid(row=1, column=2)
 
         # frame_data
         label_raw = tk.Label(frame_data, text='Raw:')
@@ -95,17 +95,17 @@ class MainWindow(tk.Frame):
         scrollbar = tk.Scrollbar(frame_download)
         self.listbox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=self.listbox.yview)
-        self.button_add = tk.Button(frame_download, text='ADD', command=self.add)
-        self.button_add_all = tk.Button(frame_download, text='ADD ALL', command=self.add_all)
-        self.button_save_each = tk.Button(frame_download, text='SAVE EACH', command=self.save_each)
-        self.button_save = tk.Button(frame_download, text='SAVE', command=self.save)
+        self.button_add = tk.Button(frame_download, text='ADD', command=self.add, width=8)
+        self.button_add_all = tk.Button(frame_download, text='ADD ALL', command=self.add_all, width=8)
+        self.button_save_each = tk.Button(frame_download, text='SAVE EACH', command=self.save_each, width=8)
+        self.button_save = tk.Button(frame_download, text='SAVE', command=self.save, width=8)
 
-        self.listbox.grid(row=0, column=0, columnspan=3)
-        scrollbar.grid(row=0, column=2)
-        self.button_add.grid(row=1, column=0)
-        self.button_add_all.grid(row=1, column=1)
-        self.button_save_each.grid(row=1, column=2)
-        self.button_save.grid(row=1, column=3)
+        self.listbox.grid(row=0, column=0, rowspan=4)
+        scrollbar.grid(row=0, column=1, rowspan=4)
+        self.button_add.grid(row=0, column=2)
+        self.button_add_all.grid(row=1, column=2)
+        self.button_save_each.grid(row=2, column=2)
+        self.button_save.grid(row=3, column=2)
 
         # frame plot
         self.color_range_1 = tk.DoubleVar(value=0)
@@ -122,6 +122,8 @@ class MainWindow(tk.Frame):
                                                            'jet', 'nipy_spectral', 'gist_ncar']),
                                                   command=self.imshow)
         self.optionmenu_map_color.config(state=tk.DISABLED)
+        self.ev = tk.BooleanVar(value=False)
+        checkbox_ev = tk.Checkbutton(frame_plot, text='eV', variable=self.ev, command=self.update_plot)
         self.autoscale = tk.BooleanVar(value=True)
         checkbox_autoscale = tk.Checkbutton(frame_plot, text='Auto Scale', variable=self.autoscale)
         self.button_apply = tk.Button(frame_plot, text='APPLY', command=self.imshow, width=7, state=tk.DISABLED)
@@ -129,8 +131,9 @@ class MainWindow(tk.Frame):
         entry_color_range_1.grid(row=0, column=0)
         entry_color_range_2.grid(row=0, column=1)
         self.button_apply.grid(row=1, column=0, columnspan=2)
-        self.optionmenu_map_color.grid(row=2, column=0, columnspan=3)
-        checkbox_autoscale.grid(row=3, column=0, columnspan=3)
+        self.optionmenu_map_color.grid(row=2, column=0, columnspan=2)
+        checkbox_ev.grid(row=3, column=0)
+        checkbox_autoscale.grid(row=3, column=1)
 
         # canvas_drop
         self.canvas_drop = tk.Canvas(self.master, width=self.width_master, height=self.height_master)
@@ -200,8 +203,12 @@ class MainWindow(tk.Frame):
                 self.line[0].remove()
             else:  # for after calibration
                 self.ax[1].cla()
+
+        x = self.calibrator.xdata.copy()
+        if self.ev.get():
+            x = 1240 / x
         self.line = self.ax[1].plot(
-            self.calibrator.xdata,
+            x,
             self.calibrator.map_data_accumulated[self.index_to_show],
             label=str(self.index_to_show), color='r', linewidth=0.8)
         self.ax[1].legend()
