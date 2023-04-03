@@ -217,7 +217,10 @@ class MainWindow(tk.Frame):
     def drop(self, event: TkinterDnD.DnDEvent=None) -> None:
         self.canvas_drop.place_forget()
 
-        filename = event.data.split()[0]
+        if event.data[0] == '{':
+            filename = event.data.split('} {')[0].strip('{').strip('}')
+        else:
+            filename = event.data.split()[0]
 
         master_geometry = list(map(int, self.master.winfo_geometry().split('+')[1:]))
         dropped_place = (event.y_root - master_geometry[1] - 30) / self.height_canvas
