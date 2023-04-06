@@ -77,7 +77,10 @@ class MainWindow(tk.Frame):
         self.dimension = tk.StringVar(value=self.calibrator.get_dimension_list()[0])
         optionmenu_dimension = tk.OptionMenu(frame_data, self.dimension, *self.calibrator.get_dimension_list())
         self.function = tk.StringVar(value=self.calibrator.get_function_list()[0])
-        optionmenu_function = tk.OptionMenu(frame_data, self.function, *self.calibrator.get_function_list())
+        self.optionmenu_function = tk.OptionMenu(frame_data, self.function, *self.calibrator.get_function_list())
+        self.optionmenu_function.config(state=tk.DISABLED)
+        self.easy = tk.BooleanVar(value=True)
+        checkbutton_easy = tk.Checkbutton(frame_data, text='easy', variable=self.easy, command=self.switch_easy)
         self.background_correction = tk.BooleanVar(value=False)
         self.checkbutton_bg = tk.Checkbutton(frame_data, text='BG', variable=self.background_correction, command=self.reload, state=tk.DISABLED)
         self.cosmic_ray_removal = tk.BooleanVar(value=False)
@@ -94,7 +97,8 @@ class MainWindow(tk.Frame):
         combobox_center.grid(row=3, column=1, columnspan=2)
         optionmenu_material.grid(row=4, column=0)
         optionmenu_dimension.grid(row=4, column=1)
-        optionmenu_function.grid(row=4, column=2)
+        self.optionmenu_function.grid(row=4, column=2)
+        checkbutton_easy.grid(row=4, column=3)
         self.checkbutton_bg.grid(row=5, column=0)
         self.checkbutton_crr.grid(row=5, column=1)
         self.button_calibrate.grid(row=5, column=2)
@@ -160,14 +164,20 @@ class MainWindow(tk.Frame):
         self.canvas_drop.create_text(self.width_master / 2, self.height_master * 5 / 6, text='Reference RAS File',
                                      font=('Arial', 30))
 
+    def switch_easy(self):
+        if self.easy.get():
+            self.optionmenu_function.config(state=tk.DISABLED)
+        else:
+            self.optionmenu_function.config(state=tk.ACTIVE)
+
     def calibrate(self) -> None:
         self.calibrator.reset_ref_data()
         self.calibrator.set_initial_xdata(self.center.get())
         self.calibrator.set_dimension(int(self.dimension.get()[0]))
         self.calibrator.set_material(self.material.get())
         self.calibrator.set_function(self.function.get())
-        self.calibrator.set_search_width(10)
-        ok = self.calibrator.calibrate(easy=True)
+        self.calibrator.set_search_width(5)
+        ok = self.calibrator.calibrate(easy=self.easy.get())
         if not ok:
             messagebox.showerror('Error', 'Peaks not found.')
             return
@@ -321,7 +331,7 @@ class MainWindow(tk.Frame):
 
     def write_header(self, f):
         abs_path_raw = self.calibrator.reader_raw.filename
-        abs_path_bg = self.calibrator.reader_bg.filename
+        abs_path_bg = self.calibrator.reader_bg.filename if self.background_correction.get() else ''
         abs_path_ref = self.calibrator.reader_ref.filename
         f.write(f'# abs_path_raw: {abs_path_raw}\n')
         f.write(f'# abs_path_bg: {abs_path_bg}\n')
