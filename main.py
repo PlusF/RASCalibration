@@ -79,9 +79,9 @@ class MainWindow(tk.Frame):
         self.function = tk.StringVar(value=self.calibrator.get_function_list()[0])
         optionmenu_function = tk.OptionMenu(frame_data, self.function, *self.calibrator.get_function_list())
         self.background_correction = tk.BooleanVar(value=False)
-        checkbutton_bg = tk.Checkbutton(frame_data, text='BG', variable=self.background_correction, command=self.reload)
+        self.checkbutton_bg = tk.Checkbutton(frame_data, text='BG', variable=self.background_correction, command=self.reload, state=tk.DISABLED)
         self.cosmic_ray_removal = tk.BooleanVar(value=False)
-        checkbutton_crr = tk.Checkbutton(frame_data, text='CRR', variable=self.cosmic_ray_removal, command=self.reload)
+        self.checkbutton_crr = tk.Checkbutton(frame_data, text='CRR', variable=self.cosmic_ray_removal, command=self.reload, state=tk.DISABLED)
         self.button_calibrate = tk.Button(frame_data, text='CALIBRATE', command=self.calibrate, state=tk.DISABLED)
 
         label_raw.grid(row=0, column=0)
@@ -95,8 +95,8 @@ class MainWindow(tk.Frame):
         optionmenu_material.grid(row=4, column=0)
         optionmenu_dimension.grid(row=4, column=1)
         optionmenu_function.grid(row=4, column=2)
-        checkbutton_bg.grid(row=5, column=0)
-        checkbutton_crr.grid(row=5, column=1)
+        self.checkbutton_bg.grid(row=5, column=0)
+        self.checkbutton_crr.grid(row=5, column=1)
         self.button_calibrate.grid(row=5, column=2)
 
         # frame_download
@@ -260,6 +260,7 @@ class MainWindow(tk.Frame):
             self.calibrator.load_raw(filename)
             self.filename_raw.set(os.path.basename(filename))
             self.folder = os.path.dirname(filename)
+            self.checkbutton_crr.config(state=tk.ACTIVE)
 
             self.optionmenu_map_color.config(state=tk.ACTIVE)
             self.button_apply.config(state=tk.ACTIVE)
@@ -270,6 +271,7 @@ class MainWindow(tk.Frame):
         elif dropped_place < threshold * 2:  # background data
             self.calibrator.load_bg(filename)
             self.filename_bg.set(os.path.basename(filename))
+            self.checkbutton_bg.config(state=tk.ACTIVE)
 
             self.ax[1].cla()
             self.ax[1].plot(self.calibrator.xdata, self.calibrator.bg_data_accumulated, color='k')
@@ -317,6 +319,19 @@ class MainWindow(tk.Frame):
         for idx in sorted(list(self.listbox.curselection()), reverse=True):
             self.listbox.delete(idx)
 
+    def write_header(self, f):
+        abs_path_raw = self.calibrator.reader_raw.filename
+        abs_path_bg = self.calibrator.reader_bg.filename
+        abs_path_ref = self.calibrator.reader_ref.filename
+        f.write(f'# abs_path_raw: {abs_path_raw}\n')
+        f.write(f'# abs_path_bg: {abs_path_bg}\n')
+        f.write(f'# abs_path_ref: {abs_path_ref}\n')
+        f.write(f'# calibration: {self.calibrator.calibration_info}\n')
+        f.write(f'# time: {self.calibrator.reader_raw.time}\n')
+        f.write(f'# integration: {self.calibrator.reader_raw.integration}\n')
+        f.write(f'# accumulation: {self.calibrator.reader_raw.accumulation}\n')
+        f.write(f'# interval: {self.calibrator.reader_raw.interval}\n')
+
     def save_each(self) -> None:
         if not self.file_to_download.get():
             return
@@ -328,17 +343,10 @@ class MainWindow(tk.Frame):
         xdata = self.calibrator.xdata
         for index in self.file_to_download.get():
             spectrum = self.calibrator.map_data_accumulated[index]
-            abs_path_raw = os.path.join(self.folder, self.filename_raw.get())
-            if self.filename_ref.get() == 'please drag & drop!':
-                abs_path_ref = ''
-            else:
-                abs_path_ref = os.path.join(self.folder, self.filename_ref.get())
+
             filename = os.path.join(folder_to_save, f'{index}.txt')
             with open(filename, 'w') as f:
-                f.write(f'# abs_path_raw: {abs_path_raw}\n')
-                f.write(f'# abs_path_ref: {abs_path_ref}\n')
-                f.write(f'# calibration: {self.calibrator.calibration_info}\n\n')
-
+                self.write_header(f)
                 for x, y in zip(xdata, spectrum):
                     f.write(f'{x},{y}\n')
 
@@ -360,17 +368,8 @@ class MainWindow(tk.Frame):
 
         data = np.vstack([pos_data, map_data])
 
-        abs_path_raw = os.path.join(self.folder, self.filename_raw.get())
-        abs_path_ref = os.path.join(self.folder, self.filename_ref.get())
         with open(filename, 'w') as f:
-            f.write(f'# abs_path_raw: {abs_path_raw}\n')
-            f.write(f'# abs_path_ref: {abs_path_ref}\n')
-            f.write(f'# calibration: {self.calibrator.calibration_info}\n\n')
-            f.write(f'# time: {self.calibrator.reader_raw.time}\n')
-            f.write(f'# integration: {self.calibrator.reader_raw.integration}\n')
-            f.write(f'# accumulation: {self.calibrator.reader_raw.accumulate()}\n')
-            f.write(f'# interval: {self.calibrator.reader_raw.interval}\n')
-
+            self.write_header(f)
             for d in data:
                 f.write(f'{",".join(d)}\n')
 
