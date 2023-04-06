@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from calibrator import Calibrator
 from utils import remove_cosmic_ray
+from dataloader.DataLoader import find_skip, extract_keyword
 
 
 class FileReader:
@@ -31,13 +32,13 @@ class FileReader:
 
     def load(self, filename):
         self.filename = filename
-        self.df = pd.read_csv(filename, skiprows=4, header=None, index_col=0)
         with open(filename, 'r') as f:
             lines = f.readlines()
-        self.time = lines[0].split(': ')[-1].strip('\n')
-        self.integration = float(lines[1].split(': ')[-1])
-        self.accumulation = float(lines[2].split(': ')[-1])
-        self.interval = float(lines[3].split(': ')[-1])
+        self.df = pd.read_csv(filename, skiprows=find_skip(lines) - 3, header=None, index_col=0)
+        self.time = extract_keyword(lines, 'time')
+        self.integration = float(extract_keyword(lines, 'integration'))
+        self.accumulation = int(extract_keyword(lines, 'accumulation'))
+        self.interval = float(extract_keyword(lines, 'interval'))
 
         self.pos_arr = self.df.loc['pos_x':'pos_z'].values.T
         self.xdata = self.df.index[3:].values.astype(float)
