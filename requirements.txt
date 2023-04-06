@@ -3,3 +3,4 @@ pandas
 matplotlib
 tkinterdnd2
 git+https://github.com/PlusF/Calibrator
+git+https://github.com/PlusF/DataLoader
