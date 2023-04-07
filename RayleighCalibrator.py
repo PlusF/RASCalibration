@@ -128,7 +128,7 @@ class RayleighCalibrator(Calibrator):
     def correct_background(self):
         if self.bg_data is None:
             raise ValueError('No background data.')
-        self.map_data -= self.bg_data_accumulated / self.reader_bg.interval
+        self.map_data -= self.bg_data_accumulated / self.reader_bg.accumulation
         self.map_data_accumulated -= self.bg_data_accumulated
 
     def remove_cosmic_ray(self):

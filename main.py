@@ -37,10 +37,6 @@ class MainWindow(tk.Frame):
             self.width_canvas /= 2
             self.height_canvas /= 2
         fig, self.ax = plt.subplots(1, 2, figsize=(self.width_canvas / dpi, self.height_canvas / dpi), dpi=dpi)
-        # self.horizontal_line_1 = self.ax[0].axhline(color='w', lw=1.5, ls='--')
-        # self.horizontal_line_1.set_visible(False)
-        # self.horizontal_line_2 = self.ax[0].axhline(color='w', lw=1.5, ls='--')
-        # self.horizontal_line_2.set_visible(False)
         self.canvas = FigureCanvasTkAgg(fig, self.master)
         self.canvas.get_tk_widget().grid(row=0, column=0, rowspan=3)
         toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=False)
@@ -265,6 +261,8 @@ class MainWindow(tk.Frame):
         dropped_place = (event.y_root - master_geometry[1] - 30) / self.height_canvas
 
         threshold = 1 / 3
+        if os.name == 'posix':
+            threshold *= 2
 
         if dropped_place < threshold:  # raw data
             self.calibrator.load_raw(filename)
@@ -350,15 +348,19 @@ class MainWindow(tk.Frame):
         if not folder_to_save:
             return
 
-        xdata = self.calibrator.xdata
         for index in self.file_to_download.get():
-            spectrum = self.calibrator.map_data_accumulated[index]
+            i1 = index * self.calibrator.reader_raw.accumulation
+            i2 = (index + 1) * self.calibrator.reader_raw.accumulation
+            map_data = np.vstack([self.calibrator.xdata, self.calibrator.map_data[i1:i2]]).T.astype(str)
+            pos_data = np.vstack([np.array(['pos_x', 'pos_y', 'pos_z']), self.calibrator.reader_raw.pos_arr[i1:i2]]).T.astype(str)
+
+            data = np.vstack([pos_data, map_data])
 
             filename = os.path.join(folder_to_save, f'{index}.txt')
             with open(filename, 'w') as f:
                 self.write_header(f)
-                for x, y in zip(xdata, spectrum):
-                    f.write(f'{x},{y}\n')
+                for d in data:
+                    f.write(','.join(d) + '\n')
 
     def save(self) -> None:
         if self.filename_ref.get() == 'please drag & drop!':
@@ -381,7 +383,7 @@ class MainWindow(tk.Frame):
         with open(filename, 'w') as f:
             self.write_header(f)
             for d in data:
-                f.write(f'{",".join(d)}\n')
+                f.write(','.join(d) + '\n')
 
     def quit(self) -> None:
         self.master.quit()
