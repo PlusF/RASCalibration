@@ -60,11 +60,15 @@ class MainWindow(tk.Frame):
         self.filename_raw = tk.StringVar(value='please drag & drop!')
         label_filename_raw = tk.Label(frame_data, textvariable=self.filename_raw)
         label_bg = tk.Label(frame_data, text='Background:')
+        label_bg.bind('<Button-1>', self.show_bg)
         self.filename_bg = tk.StringVar(value='please drag & drop!')
         label_filename_bg = tk.Label(frame_data, textvariable=self.filename_bg)
+        label_filename_bg.bind('<Button-1>', self.show_bg)
         label_ref = tk.Label(frame_data, text='Reference:')
+        label_ref.bind('<Button-1>', self.show_ref)
         self.filename_ref = tk.StringVar(value='please drag & drop!')
         label_filename_ref = tk.Label(frame_data, textvariable=self.filename_ref)
+        label_filename_ref.bind('<Button-1>', self.show_ref)
         label_center = tk.Label(frame_data, text='Center [nm]:')
         self.center = tk.DoubleVar(value=self.calibrator.center)
         combobox_center = ttk.Combobox(frame_data, textvariable=self.center, values=[500, 630, 760], width=7, justify=tk.CENTER)
@@ -136,7 +140,7 @@ class MainWindow(tk.Frame):
                                                   command=self.imshow)
         self.optionmenu_map_color.config(state=tk.DISABLED)
         self.ev = tk.BooleanVar(value=False)
-        self.checkbox_ev = tk.Checkbutton(frame_plot, text='eV', variable=self.ev, command=self.reload, state=tk.DISABLED)
+        self.checkbox_ev = tk.Checkbutton(frame_plot, text='eV', variable=self.ev, command=self.switch_ev, state=tk.DISABLED)
         self.autoscale = tk.BooleanVar(value=True)
         checkbox_autoscale = tk.Checkbutton(frame_plot, text='Auto Scale', variable=self.autoscale)
         self.button_apply = tk.Button(frame_plot, text='APPLY', command=self.imshow, width=7, state=tk.DISABLED)
@@ -166,6 +170,13 @@ class MainWindow(tk.Frame):
         else:
             self.optionmenu_function.config(state=tk.ACTIVE)
 
+    def switch_ev(self):
+        if self.ev.get():
+            if self.calibrator.xdata[0] == 0:
+                messagebox.showerror(title='Error', message='Data contains zero.')
+                self.ev.set(False)
+        self.reload()
+
     def calibrate(self) -> None:
         self.calibrator.reset_ref_data()
         self.calibrator.set_initial_xdata(self.center.get())
@@ -182,7 +193,6 @@ class MainWindow(tk.Frame):
         self.canvas.draw()
 
         self.line = None
-        self.checkbox_ev.config(state=tk.ACTIVE)
         self.imshow()  # to update the xticklabels
 
     def reload(self):
@@ -233,7 +243,7 @@ class MainWindow(tk.Frame):
             plt.autoscale(True)
             self.ax[1].cla()
         else:
-            if self.line is not None:
+            if self.line:
                 plt.autoscale(False)  # The very first time requires autoscale
                 self.line[0].remove()
             else:  # for after calibration
@@ -247,6 +257,44 @@ class MainWindow(tk.Frame):
             self.calibrator.map_data_accumulated[self.index_to_show],
             label=str(self.index_to_show), color='r', linewidth=0.8)
         self.ax[1].legend()
+        self.canvas.draw()
+
+    def show_bg(self, event=None):
+        if self.filename_bg.get() == 'please drag & drop!':
+            return
+        plt.autoscale(True)
+        if self.line:
+            self.line[0].remove()
+        else:
+            self.ax[1].cla()
+
+        x = self.calibrator.xdata.copy()
+        if self.ev.get():
+            x = 1240 / x
+        self.line = self.ax[1].plot(
+            x,
+            self.calibrator.bg_data_accumulated,
+            label='background', color='k', linewidth=0.8)
+
+        self.canvas.draw()
+
+    def show_ref(self, event=None):
+        if self.filename_ref.get() == 'please drag & drop!':
+            return
+        plt.autoscale(True)
+        if self.line:
+            self.line[0].remove()
+        else:
+            self.ax[1].cla()
+
+        x = self.calibrator.xdata.copy()
+        if self.ev.get():
+            x = 1240 / x
+        self.line = self.ax[1].plot(
+            x,
+            self.calibrator.ydata,
+            label='reference', color='k', linewidth=0.8)
+
         self.canvas.draw()
 
     def drop(self, event: TkinterDnD.DnDEvent=None) -> None:
@@ -272,6 +320,7 @@ class MainWindow(tk.Frame):
 
             self.optionmenu_map_color.config(state=tk.ACTIVE)
             self.button_apply.config(state=tk.ACTIVE)
+            self.checkbox_ev.config(state=tk.ACTIVE)
             self.color_range_1.set(round(self.calibrator.map_data_accumulated.min()))
             self.color_range_2.set(round(self.calibrator.map_data_accumulated.max()))
             self.imshow()
@@ -282,7 +331,7 @@ class MainWindow(tk.Frame):
             self.checkbutton_bg.config(state=tk.ACTIVE)
 
             self.ax[1].cla()
-            self.ax[1].plot(self.calibrator.xdata, self.calibrator.bg_data_accumulated, color='k')
+            self.ax[1].plot(self.calibrator.xdata, self.calibrator.bg_data_accumulated, color='k', label='background')
             self.canvas.draw()
 
             if self.filename_raw.get() != 'please drag & drop!':
@@ -299,7 +348,7 @@ class MainWindow(tk.Frame):
             self.button_calibrate.config(state=tk.ACTIVE)
 
             self.ax[1].cla()
-            self.ax[1].plot(self.calibrator.xdata, self.calibrator.ydata, color='k')
+            self.ax[1].plot(self.calibrator.xdata, self.calibrator.ydata, color='k', label='reference')
             self.canvas.draw()
 
     def drop_enter(self, event: TkinterDnD.DnDEvent) -> None:
