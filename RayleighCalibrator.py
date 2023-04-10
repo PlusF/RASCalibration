@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from calibrator import Calibrator
-from utils import remove_cosmic_ray
+from utils import remove_cosmic_ray, smooth
 from dataloader.DataLoader import find_skip, extract_keyword
 
 
@@ -44,6 +44,8 @@ class FileReader:
         self.xdata = self.df.index[3:].values.astype(float)
         self.spectra = self.df.iloc[3:].values.astype(float).T
 
+        self.accumulate()
+
     def accumulate(self):
         spectra_accumulated = np.empty([0, self.xdata.shape[0]])
         pos_arr_new = []
@@ -81,15 +83,13 @@ class RayleighCalibrator(Calibrator):
 
         self.map_data: np.ndarray = None
         self.map_data_accumulated: np.ndarray = None
-        self.bg_data: np.ndarray = None
-        self.bg_data_accumulated: np.ndarray = None
+        self.bg_data_accumulated_smoothed: np.ndarray = None
         self.num_place: int = 0
 
         self.set_measurement('Rayleigh')
 
     def load_raw(self, filename):
         self.reader_raw.load(filename)
-        self.reader_raw.accumulate()
         self.xdata = self.reader_raw.xdata.copy()
         self.map_data = self.reader_raw.spectra.copy()
         self.map_data_accumulated = self.reader_raw.spectra_accumulated.copy()
@@ -97,12 +97,10 @@ class RayleighCalibrator(Calibrator):
 
     def load_bg(self, filename):
         self.reader_bg.load(filename)
-        self.reader_bg.accumulate()
         if self.xdata is None:
             self.xdata = self.reader_bg.xdata
-        # remove cosmic ray automatically
-        self.bg_data = remove_cosmic_ray(self.reader_bg.spectra.copy())
-        self.bg_data_accumulated = remove_cosmic_ray(self.reader_bg.spectra_accumulated.copy())[0]
+        # remove cosmic ray and smooth automatically
+        self.bg_data_accumulated_smoothed = smooth(remove_cosmic_ray(self.reader_bg.spectra_accumulated), width=100)[0]
 
     def load_ref(self, filename):
         self.reader_ref.load(filename)
@@ -126,14 +124,18 @@ class RayleighCalibrator(Calibrator):
             self.set_data(self.reader_ref.xdata, spec_sum)
 
     def correct_background(self):
-        if self.bg_data is None:
+        if self.bg_data_accumulated_smoothed is None:
             raise ValueError('No background data.')
-        self.map_data -= self.bg_data_accumulated / self.reader_bg.accumulation
-        self.map_data_accumulated -= self.bg_data_accumulated
+        self.map_data -= self.bg_data_accumulated_smoothed / self.reader_bg.accumulation
+        self.map_data_accumulated -= self.bg_data_accumulated_smoothed
 
     def remove_cosmic_ray(self):
         self.map_data = remove_cosmic_ray(self.map_data)
         self.map_data_accumulated = remove_cosmic_ray(self.map_data_accumulated)
+
+    def smooth(self):
+        self.map_data = smooth(self.map_data, 100)
+        self.map_data_accumulated = smooth(self.map_data_accumulated, 100)
 
     def show_fit_result(self, ax: plt.Axes) -> None:
         ax.plot(self.xdata, self.ydata, color='k')

@@ -30,3 +30,24 @@ def remove_cosmic_ray(spectrum: np.ndarray, width: int = 3, threshold: float = 7
         for spec in spectrum:
             data_removed.append(remove_cosmic_ray_1d(spec, width, threshold))
         return np.array(data_removed)
+
+
+def smooth_1d(spectrum, width):
+    num_front = width // 2
+    num_back = width // 2 + 1 if width % 2 else width // 2
+    arr_append_front = np.array([spectrum[:i+1].mean() for i in range(num_front)])
+    arr_append_back = np.array([spectrum[::-1][:i+1].mean() for i in range(num_back)])
+    spectrum_extended = np.hstack([arr_append_front, spectrum, arr_append_back])
+    spectrum_smoothed = np.convolve(spectrum_extended, np.ones(width) / width, mode='same')
+    return spectrum_smoothed[num_front:-num_back]
+
+
+def smooth(spectrum, width):
+    if len(spectrum.shape) == 1:
+        return smooth_1d(spectrum, width)
+
+    if len(spectrum.shape) == 2:
+        spectrum_smoothed = []
+        for s in spectrum:
+            spectrum_smoothed.append(smooth_1d(s, width))
+        return np.array(spectrum_smoothed)

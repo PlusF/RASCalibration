@@ -85,6 +85,8 @@ class MainWindow(tk.Frame):
         self.checkbutton_bg = tk.Checkbutton(frame_data, text='BG', variable=self.background_correction, command=self.reload, state=tk.DISABLED)
         self.cosmic_ray_removal = tk.BooleanVar(value=False)
         self.checkbutton_crr = tk.Checkbutton(frame_data, text='CRR', variable=self.cosmic_ray_removal, command=self.reload, state=tk.DISABLED)
+        self.smoothing = tk.BooleanVar(value=False)
+        self.checkbutton_sm = tk.Checkbutton(frame_data, text='Smooth', variable=self.smoothing, command=self.reload, state=tk.DISABLED)
         self.button_calibrate = tk.Button(frame_data, text='CALIBRATE', command=self.calibrate, state=tk.DISABLED)
 
         label_raw.grid(row=0, column=0)
@@ -101,7 +103,8 @@ class MainWindow(tk.Frame):
         checkbutton_easy.grid(row=4, column=3)
         self.checkbutton_bg.grid(row=5, column=0)
         self.checkbutton_crr.grid(row=5, column=1)
-        self.button_calibrate.grid(row=5, column=2)
+        self.checkbutton_sm.grid(row=5, column=2)
+        self.button_calibrate.grid(row=5, column=3)
 
         # frame_download
         self.file_to_download = tk.Variable(value=[])
@@ -198,9 +201,14 @@ class MainWindow(tk.Frame):
     def reload(self):
         self.calibrator.reset_map_data()
         if self.background_correction.get():
+            if self.filename_bg.get() == 'please drag & drop!':
+                messagebox.showerror(title='Error', message='No background data.')
+                return
             self.calibrator.correct_background()
         if self.cosmic_ray_removal.get():
             self.calibrator.remove_cosmic_ray()
+        if self.smoothing.get():
+            self.calibrator.smooth()
         self.imshow()
         self.update_plot()
 
@@ -273,7 +281,7 @@ class MainWindow(tk.Frame):
             x = 1240 / x
         self.line = self.ax[1].plot(
             x,
-            self.calibrator.bg_data_accumulated,
+            self.calibrator.bg_data_accumulated_smoothed,
             label='background', color='k', linewidth=0.8)
 
         self.canvas.draw()
@@ -317,12 +325,15 @@ class MainWindow(tk.Frame):
             self.filename_raw.set(os.path.basename(filename))
             self.folder = os.path.dirname(filename)
             self.checkbutton_crr.config(state=tk.ACTIVE)
+            self.checkbutton_sm.config(state=tk.ACTIVE)
 
             self.optionmenu_map_color.config(state=tk.ACTIVE)
             self.button_apply.config(state=tk.ACTIVE)
             self.checkbox_ev.config(state=tk.ACTIVE)
             self.color_range_1.set(round(self.calibrator.map_data_accumulated.min()))
             self.color_range_2.set(round(self.calibrator.map_data_accumulated.max()))
+
+            self.reload()
             self.imshow()
             self.update_plot()
         elif dropped_place < threshold * 2:  # background data
@@ -331,7 +342,7 @@ class MainWindow(tk.Frame):
             self.checkbutton_bg.config(state=tk.ACTIVE)
 
             self.ax[1].cla()
-            self.ax[1].plot(self.calibrator.xdata, self.calibrator.bg_data_accumulated, color='k', label='background')
+            self.ax[1].plot(self.calibrator.xdata, self.calibrator.bg_data_accumulated_smoothed, color='k', label='background')
             self.canvas.draw()
 
             if self.filename_raw.get() != 'please drag & drop!':
