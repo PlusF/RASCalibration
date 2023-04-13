@@ -423,10 +423,6 @@ class MainWindow(tk.Frame):
                     f.write(','.join(d) + '\n')
 
     def save(self) -> None:
-        if self.filename_ref.get() == 'please drag & drop!':
-            messagebox.showerror('Error', 'No calibration performed. No need to save.')
-            return
-
         filename = filedialog.asksaveasfilename(initialdir=self.folder)
         if not filename:
             return
