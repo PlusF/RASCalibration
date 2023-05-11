@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+from dataloader.DataLoader import find_skip, extract_keyword
 
 
 def remove_cosmic_ray_1d(spectrum: np.ndarray, width: int, threshold: float):
@@ -51,3 +53,123 @@ def smooth(spectrum, width):
         for s in spectrum:
             spectrum_smoothed.append(smooth_1d(s, width))
         return np.array(spectrum_smoothed)
+
+
+class FileReader:
+    def __init__(self):
+        self.filename: str = ''
+        self.time: str = ''
+        self.integration: float = 0
+        self.accumulation: int = 0
+        self.interval: float = 0
+        self.df: pd.DataFrame = pd.DataFrame()
+
+        self.pos_arr: np.ndarray = None
+        self.pos_arr_relative_accumulated: np.ndarray = None
+        self.xdata: np.ndarray = None
+        self.spectra: np.ndarray = None
+        self.spectra_accumulated: np.ndarray = None
+
+    def __str__(self):
+        return f'filename: {self.filename}\n' \
+               f'time: {self.time}\n' \
+               f'integration: {self.integration}\n' \
+               f'accumulation: {self.accumulation}\n' \
+               f'interval: {self.interval}\n' \
+               f'data:\n{self.df}' \
+
+
+    def load(self, filename):
+        self.filename = filename
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+        self.df = pd.read_csv(filename, skiprows=find_skip(lines) - 3, header=None, index_col=0)
+        self.time = extract_keyword(lines, 'time')
+        self.integration = float(extract_keyword(lines, 'integration'))
+        self.accumulation = int(extract_keyword(lines, 'accumulation'))
+        self.interval = float(extract_keyword(lines, 'interval'))
+
+        self.pos_arr = self.df.loc['pos_x':'pos_z'].values.T
+        self.xdata = self.df.index[3:].values.astype(float)
+        self.spectra = self.df.iloc[3:].values.astype(float).T
+
+        self.accumulate()
+
+    def accumulate(self):
+        spectra_accumulated = np.empty([0, self.xdata.shape[0]])
+        pos_arr_new = []
+
+        tmp_accumulated = np.zeros(self.xdata.shape[0])
+        pos_origin = self.pos_arr[0]
+        pos_check = self.pos_arr[0]
+
+        for i, (pos, spec) in enumerate(zip(self.pos_arr, self.spectra)):
+            if self.pos_arr[i].all() == np.zeros(3).all():  # なぜ起きた？
+                print(f'Warning: skip dangerous data {i}')
+                continue
+            if i % self.accumulation == 0:
+                pos_check = self.pos_arr[i]
+            else:
+                if pos.any() != pos_check.any():
+                    print(f'{i}: {pos}, {pos_check}')
+                    raise ValueError('Spectra were got at different positions.')
+            tmp_accumulated += spec
+
+            if i % self.accumulation == self.accumulation - 1:
+                spectra_accumulated = np.append(spectra_accumulated, tmp_accumulated.reshape([1, self.xdata.shape[0]]), axis=0)
+                pos_arr_new.append(pos_check - pos_origin)
+                tmp_accumulated = np.zeros(self.xdata.shape[0])
+
+        self.pos_arr_relative_accumulated = np.array(pos_arr_new)
+        self.spectra_accumulated = spectra_accumulated
+
+
+def concat(filenames, filename_to_save):
+    fr = FileReader()
+
+    fr_list = []
+    for filename in filenames:
+        fr_tmp = FileReader()
+        fr_tmp.load(filename)
+        fr_list.append(fr_tmp)
+        # TODO: check if metadata matches
+
+    fr.filename = ','.join(filenames)
+    fr.integration = fr_list[0].integration
+    fr.accumulation = fr_list[0].accumulation
+    fr.interval = fr_list[0].interval
+
+    fr.pos_arr = fr_list[0].pos_arr
+    fr.pos_arr_relative_accumulated = fr_list[0].pos_arr_relative_accumulated
+    fr.xdata = np.hstack([f.xdata for f in fr_list])
+    fr.spectra = np.hstack([f.spectra for f in fr_list])
+    fr.spectra_accumulated = np.hstack([f.spectra_accumulated for f in fr_list])
+
+    pos_data = fr.pos_arr
+    pos_data = np.vstack([np.array(['pos_x', 'pos_y', 'pos_z']), pos_data]).T.astype(str)
+
+    xdata = np.array(fr.xdata)
+    map_data = fr.spectra
+    map_data = np.vstack([xdata, map_data]).T.astype(str)
+
+    data = np.vstack([pos_data, map_data])
+
+    with open(filename_to_save, 'w') as f:
+        f.write(f'# abs_path_raw: {fr.filename}\n')
+        f.write(f'# abs_path_bg: \n')
+        f.write(f'# abs_path_ref: \n')
+        f.write(f'# calibration: \n')
+        f.write(f'# time: \n')
+        f.write(f'# integration: {fr.integration}\n')
+        f.write(f'# accumulation: {fr.accumulation}\n')
+        f.write(f'# interval: {fr.interval}\n')
+        for d in data:
+            f.write(','.join(d) + '\n')
+
+
+if __name__ == '__main__':
+    concat(
+        [r"G:\My Drive\kaneda\Data_M2\230420\RAS\scan500bc.txt",
+         r"G:\My Drive\kaneda\Data_M2\230420\RAS\scan630bc.txt",
+         r"G:\My Drive\kaneda\Data_M2\230420\RAS\scan760bc.txt"],
+        r'G:\My Drive\kaneda\Data_M2\230420\RAS\scan500_630_760.txt')

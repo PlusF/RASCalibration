@@ -1,75 +1,7 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from calibrator import Calibrator
-from utils import remove_cosmic_ray, smooth
-from dataloader.DataLoader import find_skip, extract_keyword
-
-
-class FileReader:
-    def __init__(self):
-        self.filename: str = ''
-        self.time: str = ''
-        self.integration: float = 0
-        self.accumulation: int = 0
-        self.interval: float = 0
-        self.df: pd.DataFrame = pd.DataFrame()
-
-        self.pos_arr: np.ndarray = None
-        self.pos_arr_relative_accumulated: np.ndarray = None
-        self.xdata: np.ndarray = None
-        self.spectra: np.ndarray = None
-        self.spectra_accumulated: np.ndarray = None
-
-    def __str__(self):
-        return f'filename: {self.filename}\n' \
-               f'time: {self.time}\n' \
-               f'integration: {self.integration}\n' \
-               f'accumulation: {self.accumulation}\n' \
-               f'interval: {self.interval}\n' \
-               f'data:\n{self.df}' \
-
-
-    def load(self, filename):
-        self.filename = filename
-        with open(filename, 'r') as f:
-            lines = f.readlines()
-        self.df = pd.read_csv(filename, skiprows=find_skip(lines) - 3, header=None, index_col=0)
-        self.time = extract_keyword(lines, 'time')
-        self.integration = float(extract_keyword(lines, 'integration'))
-        self.accumulation = int(extract_keyword(lines, 'accumulation'))
-        self.interval = float(extract_keyword(lines, 'interval'))
-
-        self.pos_arr = self.df.loc['pos_x':'pos_z'].values.T
-        self.xdata = self.df.index[3:].values.astype(float)
-        self.spectra = self.df.iloc[3:].values.astype(float).T
-
-        self.accumulate()
-
-    def accumulate(self):
-        spectra_accumulated = np.empty([0, self.xdata.shape[0]])
-        pos_arr_new = []
-
-        tmp_accumulated = np.zeros(self.xdata.shape[0])
-        pos_origin = self.pos_arr[0]
-        pos_check = self.pos_arr[0]
-
-        for i, (pos, spec) in enumerate(zip(self.pos_arr, self.spectra)):
-            if i % self.accumulation == 0:
-                pos_check = self.pos_arr[i]
-            else:
-                if pos.any() != pos_check.any():
-                    print(f'{i}: {pos}, {pos_check}')
-                    raise ValueError('Spectra were got at different positions.')
-            tmp_accumulated += spec
-
-            if i % self.accumulation == self.accumulation - 1:
-                spectra_accumulated = np.append(spectra_accumulated, tmp_accumulated.reshape([1, self.xdata.shape[0]]), axis=0)
-                pos_arr_new.append(pos_check - pos_origin)
-                tmp_accumulated = np.zeros(self.xdata.shape[0])
-
-        self.pos_arr_relative_accumulated = np.array(pos_arr_new)
-        self.spectra_accumulated = spectra_accumulated
+from utils import remove_cosmic_ray, smooth, FileReader
 
 
 class RayleighCalibrator(Calibrator):
