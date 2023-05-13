@@ -20,7 +20,6 @@ class MainWindow(tk.Frame):
         self.master.geometry(f'{self.width_master}x{self.height_master}')
 
         self.calibrator = RayleighCalibrator()
-        self.index_to_show = 0
 
         self.line = None
 
@@ -49,11 +48,13 @@ class MainWindow(tk.Frame):
 
         # frames
         frame_data = tk.LabelFrame(self.master, text='Data')
+        frame_selected = tk.LabelFrame(self.master, text='Selected')
         frame_download = tk.LabelFrame(self.master, text='Download')
         frame_plot = tk.LabelFrame(self.master, text='Plot')
         frame_data.grid(row=0, column=1, columnspan=2)
-        frame_download.grid(row=1, column=1)
-        frame_plot.grid(row=1, column=2)
+        frame_selected.grid(row=1, column=1, columnspan=2)
+        frame_download.grid(row=2, column=1)
+        frame_plot.grid(row=2, column=2)
 
         # frame_data
         label_raw = tk.Label(frame_data, text='Raw:')
@@ -105,6 +106,29 @@ class MainWindow(tk.Frame):
         self.checkbutton_crr.grid(row=5, column=1)
         self.checkbutton_sm.grid(row=5, column=2)
         self.button_calibrate.grid(row=5, column=3)
+
+        # frame_selected
+        label_index = tk.Label(frame_selected, text='  index  ')
+        label_pos_x = tk.Label(frame_selected, text='  pos_x  ')
+        label_pos_y = tk.Label(frame_selected, text='  pos_y  ')
+        label_pos_z = tk.Label(frame_selected, text='  pos_z  ')
+        self.index_to_show = tk.IntVar(value=0)
+        label_index_value = tk.Label(frame_selected, textvariable=self.index_to_show)
+        self.pos_x = tk.DoubleVar(value=0)
+        label_pos_x_value = tk.Label(frame_selected, textvariable=self.pos_x)
+        self.pos_y = tk.DoubleVar(value=0)
+        label_pos_y_value = tk.Label(frame_selected, textvariable=self.pos_y)
+        self.pos_z = tk.DoubleVar(value=0)
+        label_pos_z_value = tk.Label(frame_selected, textvariable=self.pos_z)
+
+        label_index.grid(row=0, column=0)
+        label_pos_x.grid(row=0, column=1)
+        label_pos_y.grid(row=0, column=2)
+        label_pos_z.grid(row=0, column=3)
+        label_index_value.grid(row=1, column=0)
+        label_pos_x_value.grid(row=1, column=1)
+        label_pos_y_value.grid(row=1, column=2)
+        label_pos_z_value.grid(row=1, column=3)
 
         # frame_download
         self.file_to_download = tk.Variable(value=[])
@@ -215,19 +239,24 @@ class MainWindow(tk.Frame):
     def on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
         if event.ydata is None:
             return
-        self.index_to_show = int(np.floor(event.ydata))
+        self.index_to_show.set(int(np.floor(event.ydata)))
         self.update_plot()
 
     def key_pressed(self, event: matplotlib.backend_bases.KeyEvent) -> None:
         if event.key == 'enter':
             self.imshow()
             return
-        if event.key == 'up' and self.index_to_show < self.calibrator.num_place - 1:
-            self.index_to_show += 1
-        elif event.key == 'down' and 0 < self.index_to_show:
-            self.index_to_show -= 1
+        index_selected = self.index_to_show.get()
+        if event.key == 'up' and index_selected < self.calibrator.num_pos - 1:
+            self.index_to_show.set(index_selected + 1)
+        elif event.key == 'down' and 0 < index_selected:
+            self.index_to_show.set(index_selected - 1)
         else:
             return
+        x, y, z = self.calibrator.reader_raw.pos_arr_absolute_accumulated[self.index_to_show.get()]
+        self.pos_x.set(x)
+        self.pos_y.set(y)
+        self.pos_z.set(z)
         self.update_plot()
 
     def imshow(self, event=None) -> None:
@@ -242,10 +271,11 @@ class MainWindow(tk.Frame):
         self.canvas.draw()
 
     def update_plot(self) -> None:
-        if not (0 <= self.index_to_show < self.calibrator.num_place):
+        index_to_show = self.index_to_show.get()
+        if not (0 <= index_to_show < self.calibrator.num_pos):
             return
-        self.horizontal_line_1.set_ydata(self.index_to_show)
-        self.horizontal_line_2.set_ydata(self.index_to_show + 1)
+        self.horizontal_line_1.set_ydata(index_to_show)
+        self.horizontal_line_2.set_ydata(index_to_show + 1)
 
         if self.autoscale.get():
             plt.autoscale(True)
@@ -262,8 +292,8 @@ class MainWindow(tk.Frame):
             x = 1240 / x
         self.line = self.ax[1].plot(
             x,
-            self.calibrator.map_data_accumulated[self.index_to_show],
-            label=str(self.index_to_show), color='r', linewidth=0.8)
+            self.calibrator.map_data_accumulated[index_to_show],
+            label=f'{index_to_show} ({self.pos_x.get()}, {self.pos_y.get()}, {self.pos_z.get()})', color='r', linewidth=0.8)
         self.ax[1].legend()
         self.canvas.draw()
 
@@ -374,11 +404,11 @@ class MainWindow(tk.Frame):
             indices = []
         else:
             indices = list(indices)
-        indices.append(self.index_to_show)
+        indices.append(self.index_to_show.get())
         self.file_to_download.set(indices)
 
     def add_all(self) -> None:
-        all_indices = list(range(self.calibrator.num_place))
+        all_indices = list(range(self.calibrator.num_pos))
         self.file_to_download.set(all_indices)
 
     def delete(self, event=None) -> None:

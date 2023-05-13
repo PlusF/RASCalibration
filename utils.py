@@ -66,6 +66,7 @@ class FileReader:
 
         self.pos_arr: np.ndarray = None
         self.pos_arr_relative_accumulated: np.ndarray = None
+        self.pos_arr_absolute_accumulated: np.ndarray = None
         self.xdata: np.ndarray = None
         self.spectra: np.ndarray = None
         self.spectra_accumulated: np.ndarray = None
@@ -97,7 +98,8 @@ class FileReader:
 
     def accumulate(self):
         spectra_accumulated = np.empty([0, self.xdata.shape[0]])
-        pos_arr_new = []
+        pos_arr_rel_acc = []
+        pos_arr_abs_acc = []
 
         tmp_accumulated = np.zeros(self.xdata.shape[0])
         pos_origin = self.pos_arr[0]
@@ -117,10 +119,12 @@ class FileReader:
 
             if i % self.accumulation == self.accumulation - 1:
                 spectra_accumulated = np.append(spectra_accumulated, tmp_accumulated.reshape([1, self.xdata.shape[0]]), axis=0)
-                pos_arr_new.append(pos_check - pos_origin)
+                pos_arr_rel_acc.append(pos_check - pos_origin)
+                pos_arr_abs_acc.append(pos_check)
                 tmp_accumulated = np.zeros(self.xdata.shape[0])
 
-        self.pos_arr_relative_accumulated = np.array(pos_arr_new)
+        self.pos_arr_relative_accumulated = np.array(pos_arr_rel_acc)
+        self.pos_arr_absolute_accumulated = np.array(pos_arr_abs_acc)
         self.spectra_accumulated = spectra_accumulated
 
 
@@ -169,7 +173,7 @@ def concat(filenames, filename_to_save):
 
 if __name__ == '__main__':
     concat(
-        [r"G:\My Drive\kaneda\Data_M2\230420\RAS\scan500bc.txt",
-         r"G:\My Drive\kaneda\Data_M2\230420\RAS\scan630bc.txt",
-         r"G:\My Drive\kaneda\Data_M2\230420\RAS\scan760bc.txt"],
-        r'G:\My Drive\kaneda\Data_M2\230420\RAS\scan500_630_760.txt')
+        [r"G:\My Drive\kaneda\Data_M2\230511\scan_upperleft_500bc.txt",
+         r"G:\My Drive\kaneda\Data_M2\230511\scan_upperleft_630bc.txt",
+         r"G:\My Drive\kaneda\Data_M2\230511\scan_upperleft_760bc.txt"],
+        r'G:\My Drive\kaneda\Data_M2\230511\scan_upperleft_500_630_760.txt')
