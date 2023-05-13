@@ -21,8 +21,10 @@ class MainWindow(tk.Frame):
 
         self.calibrator = RayleighCalibrator()
 
-        self.line = None
+        # スペクトルの線．Auto ScaleをOffにした際にスケールを保つため，スペクトルを更新する際は線のみ削除する
+        self.line = []
 
+        # フォルダ選択ダイアログを開く際のデフォルトディレクトリ
         self.folder = './'
 
         self.create_widgets()
@@ -47,6 +49,7 @@ class MainWindow(tk.Frame):
         self.canvas.mpl_connect('key_press_event', key_press_handler)
 
         # frames
+        # ある程度のウィジェットをひとまとまりにするためのフレーム群
         frame_data = tk.LabelFrame(self.master, text='Data')
         frame_selected = tk.LabelFrame(self.master, text='Selected')
         frame_download = tk.LabelFrame(self.master, text='Download')
@@ -57,6 +60,7 @@ class MainWindow(tk.Frame):
         frame_plot.grid(row=2, column=2)
 
         # frame_data
+        # inputしたデータやキャリブレーションの設定，background correctionやcosmic ray removalの設定もできる
         label_raw = tk.Label(frame_data, text='Raw:')
         self.filename_raw = tk.StringVar(value='please drag & drop!')
         label_filename_raw = tk.Label(frame_data, textvariable=self.filename_raw)
@@ -82,8 +86,8 @@ class MainWindow(tk.Frame):
         self.optionmenu_function.config(state=tk.DISABLED)
         self.easy = tk.BooleanVar(value=True)
         checkbutton_easy = tk.Checkbutton(frame_data, text='easy', variable=self.easy, command=self.switch_easy)
-        self.background_correction = tk.BooleanVar(value=False)
-        self.checkbutton_bg = tk.Checkbutton(frame_data, text='BG', variable=self.background_correction, command=self.reload, state=tk.DISABLED)
+        self.do_background_correction = tk.BooleanVar(value=False)
+        self.checkbutton_bg = tk.Checkbutton(frame_data, text='BG', variable=self.do_background_correction, command=self.reload, state=tk.DISABLED)
         self.cosmic_ray_removal = tk.BooleanVar(value=False)
         self.checkbutton_crr = tk.Checkbutton(frame_data, text='CRR', variable=self.cosmic_ray_removal, command=self.reload, state=tk.DISABLED)
         self.smoothing = tk.BooleanVar(value=False)
@@ -108,6 +112,8 @@ class MainWindow(tk.Frame):
         self.button_calibrate.grid(row=5, column=3)
 
         # frame_selected
+        # 表示中のスペクトルの情報を表示
+        # TODO: 現時点はインデックスと座標だけだが，測定条件の細かい情報も表示したい
         label_index = tk.Label(frame_selected, text='  index  ')
         label_pos_x = tk.Label(frame_selected, text='  pos_x  ')
         label_pos_y = tk.Label(frame_selected, text='  pos_y  ')
@@ -131,6 +137,7 @@ class MainWindow(tk.Frame):
         label_pos_z_value.grid(row=1, column=3)
 
         # frame_download
+        # ダウンロード関連のウェジェット
         self.file_to_download = tk.Variable(value=[])
         self.listbox = tk.Listbox(frame_download, listvariable=self.file_to_download, selectmode=tk.MULTIPLE, width=8,
                                   height=6, justify=tk.CENTER)
@@ -142,16 +149,17 @@ class MainWindow(tk.Frame):
         self.button_add = tk.Button(frame_download, text='ADD', command=self.add, width=8)
         self.button_add_all = tk.Button(frame_download, text='ADD ALL', command=self.add_all, width=8)
         self.button_save_each = tk.Button(frame_download, text='SAVE EACH', command=self.save_each, width=8)
-        self.button_save = tk.Button(frame_download, text='SAVE', command=self.save, width=8)
+        self.button_save_map = tk.Button(frame_download, text='SAVE MAP', command=self.save_map, width=8)
 
         self.listbox.grid(row=0, column=0, rowspan=4)
         scrollbar.grid(row=0, column=1, rowspan=4)
         self.button_add.grid(row=0, column=2)
         self.button_add_all.grid(row=1, column=2)
         self.button_save_each.grid(row=2, column=2)
-        self.button_save.grid(row=3, column=2)
+        self.button_save_map.grid(row=3, column=2)
 
         # frame plot
+        # マッピングのカラーバーの設定．最小値最大値に加え，マッピングのカラーマップも設定できる．X軸をeV表記にしたり，AutoScaleのOn/Offも
         self.color_range_1 = tk.DoubleVar(value=0)
         self.color_range_2 = tk.DoubleVar(value=2000)
         entry_color_range_1 = tk.Entry(frame_plot, textvariable=self.color_range_1, width=7, justify=tk.CENTER)
@@ -180,6 +188,7 @@ class MainWindow(tk.Frame):
         checkbox_autoscale.grid(row=3, column=1)
 
         # canvas_drop
+        # ファイルをドラッグ&ドロップする際のガイド用のウィジェット．基本は非表示．
         self.canvas_drop = tk.Canvas(self.master, width=self.width_master, height=self.height_master)
         self.canvas_drop.create_rectangle(0, 0, self.width_master, self.height_master / 3, fill='white')
         self.canvas_drop.create_rectangle(0, self.height_master / 3, self.width_master, self.height_master * 2 / 3, fill='lightgray')
@@ -192,12 +201,15 @@ class MainWindow(tk.Frame):
                                      font=('Arial', 30))
 
     def switch_easy(self):
+        # キャリブレーション用ピーク検出の際，単に最大値抽出するか，関数でピークフィットするかの設定．
+        # easyがonの時は最大値抽出
         if self.easy.get():
             self.optionmenu_function.config(state=tk.DISABLED)
         else:
             self.optionmenu_function.config(state=tk.ACTIVE)
 
     def switch_ev(self):
+        # X軸を波長にするかエネルギーにするか
         if self.ev.get():
             if self.calibrator.xdata[0] == 0:
                 messagebox.showerror(title='Error', message='Data contains zero.')
@@ -219,12 +231,14 @@ class MainWindow(tk.Frame):
         self.calibrator.show_fit_result(self.ax[1])
         self.canvas.draw()
 
-        self.line = None
+        self.line = []
         self.imshow()  # to update the xticklabels
 
     def reload(self):
+        # background correctionやcosmic ray removalの設定，ファイルの読み込み時にグラフを更新するための関数
+        # 二重にbackground correctionやcosmic ray removalをかけないよう，まず生データをセットする
         self.calibrator.reset_map_data()
-        if self.background_correction.get():
+        if self.do_background_correction.get():
             if self.filename_bg.get() == 'please drag & drop!':
                 messagebox.showerror(title='Error', message='No background data.')
                 return
@@ -237,15 +251,18 @@ class MainWindow(tk.Frame):
         self.update_plot()
 
     def on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
+        # マップをクリックして表示するスペクトルを選択
         if event.ydata is None:
             return
         self.index_to_show.set(int(np.floor(event.ydata)))
         self.update_plot()
 
     def key_pressed(self, event: matplotlib.backend_bases.KeyEvent) -> None:
+        # キーボード入力イベントを処理
         if event.key == 'enter':
-            self.imshow()
+            self.reload()
             return
+        # 上下ボタンを押したら表示するスペクトルを変更
         index_selected = self.index_to_show.get()
         if event.key == 'up' and index_selected < self.calibrator.num_pos - 1:
             self.index_to_show.set(index_selected + 1)
@@ -253,6 +270,7 @@ class MainWindow(tk.Frame):
             self.index_to_show.set(index_selected - 1)
         else:
             return
+        # 座標情報を表示
         x, y, z = self.calibrator.reader_raw.pos_arr_absolute_accumulated[self.index_to_show.get()]
         self.pos_x.set(x)
         self.pos_y.set(y)
@@ -260,9 +278,11 @@ class MainWindow(tk.Frame):
         self.update_plot()
 
     def imshow(self, event=None) -> None:
+        # マップを表示
         if self.calibrator.map_data is None:
             return
         self.ax[0].cla()
+        # 表示中のスペクトルを点線で挟んで示してあげる
         self.horizontal_line_1 = self.ax[0].axhline(color='w', lw=1.5, ls='--')
         self.horizontal_line_1.set_visible(True)
         self.horizontal_line_2 = self.ax[0].axhline(color='w', lw=1.5, ls='--')
@@ -272,11 +292,13 @@ class MainWindow(tk.Frame):
 
     def update_plot(self) -> None:
         index_to_show = self.index_to_show.get()
+        # 範囲外のインデックスの場合は表示を更新しない
         if not (0 <= index_to_show < self.calibrator.num_pos):
             return
         self.horizontal_line_1.set_ydata(index_to_show)
         self.horizontal_line_2.set_ydata(index_to_show + 1)
 
+        # AutoScale関係の設定
         if self.autoscale.get():
             plt.autoscale(True)
             self.ax[1].cla()
@@ -336,17 +358,21 @@ class MainWindow(tk.Frame):
         self.canvas.draw()
 
     def drop(self, event: TkinterDnD.DnDEvent=None) -> None:
+        # drag & dropのイベント処理
         self.canvas_drop.place_forget()
 
+        # フォルダによってファイル名の情報のフォーマットが異なることがある
         if event.data[0] == '{':
             filename = event.data.split('} {')[0].strip('{').strip('}')
         else:
             filename = event.data.split()[0]
 
+        # 何のデータかを，dropした位置から算出
         master_geometry = list(map(int, self.master.winfo_geometry().split('+')[1:]))
         dropped_place = (event.y_root - master_geometry[1] - 30) / self.height_canvas
 
         threshold = 1 / 3
+        # OSによって違うものを修正
         if os.name == 'posix':
             threshold *= 2
 
@@ -393,12 +419,16 @@ class MainWindow(tk.Frame):
             self.canvas.draw()
 
     def drop_enter(self, event: TkinterDnD.DnDEvent) -> None:
+        # ドラッグしてウィンドウに入ってきた時，ガイド用のウィジェットを表示する
         self.canvas_drop.place(anchor='nw', x=0, y=0)
 
     def drop_leave(self, event: TkinterDnD.DnDEvent) -> None:
+        # 離れたらウィジェットを非表示に
         self.canvas_drop.place_forget()
 
     def add(self) -> None:
+        # 保存したいスペクトルを追加
+        # ここではインデックスを追加し，SAVE EACHボタンが押されたらインデックスに基づいてデータが保存される
         indices = self.file_to_download.get()
         if indices == '':
             indices = []
@@ -408,18 +438,21 @@ class MainWindow(tk.Frame):
         self.file_to_download.set(indices)
 
     def add_all(self) -> None:
+        # すべてのインデックスをダウンロードリストに追加
         all_indices = list(range(self.calibrator.num_pos))
         self.file_to_download.set(all_indices)
 
     def delete(self, event=None) -> None:
+        # 保存予定のものを削除
         if not messagebox.askyesno('Confirmation', 'Delete these?'):
             return
         for idx in sorted(list(self.listbox.curselection()), reverse=True):
             self.listbox.delete(idx)
 
     def write_header(self, f):
+        # スペクトルのデータを書き出す際，ファイルの最初のほうにメタデータを追加
         abs_path_raw = self.calibrator.reader_raw.filename
-        abs_path_bg = self.calibrator.reader_bg.filename if self.background_correction.get() else ''
+        abs_path_bg = self.calibrator.reader_bg.filename if self.do_background_correction.get() else ''
         abs_path_ref = self.calibrator.reader_ref.filename
         f.write(f'# abs_path_raw: {abs_path_raw}\n')
         f.write(f'# abs_path_bg: {abs_path_bg}\n')
@@ -431,6 +464,8 @@ class MainWindow(tk.Frame):
         f.write(f'# interval: {self.calibrator.reader_raw.interval}\n')
 
     def save_each(self) -> None:
+        # インデックスごとに保存する
+
         if not self.file_to_download.get():
             return
 
@@ -452,7 +487,8 @@ class MainWindow(tk.Frame):
                 for d in data:
                     f.write(','.join(d) + '\n')
 
-    def save(self) -> None:
+    def save_map(self) -> None:
+        # マップデータとして保存
         filename = filedialog.asksaveasfilename(initialdir=self.folder)
         if not filename:
             return
