@@ -255,10 +255,7 @@ class MainWindow(tk.Frame):
         if event.ydata is None:
             return
         self.index_to_show.set(int(np.floor(event.ydata)))
-        x, y, z = self.calibrator.reader_raw.pos_arr_absolute_accumulated[self.index_to_show.get()]
-        self.pos_x.set(x)
-        self.pos_y.set(y)
-        self.pos_z.set(z)
+        self.update_position_info()
         self.update_plot()
 
     def key_pressed(self, event: matplotlib.backend_bases.KeyEvent) -> None:
@@ -275,11 +272,16 @@ class MainWindow(tk.Frame):
         else:
             return
         # 座標情報を表示
-        x, y, z = self.calibrator.reader_raw.pos_arr_absolute_accumulated[self.index_to_show.get()]
+        self.update_position_info()
+        self.update_plot()
+
+    def update_position_info(self):
+        x, y, z = map(
+            lambda p: round(p, 1),
+            self.calibrator.reader_raw.pos_arr_absolute_accumulated[self.index_to_show.get()])
         self.pos_x.set(x)
         self.pos_y.set(y)
         self.pos_z.set(z)
-        self.update_plot()
 
     def imshow(self, event=None) -> None:
         # マップを表示
