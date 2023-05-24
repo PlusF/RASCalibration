@@ -256,6 +256,9 @@ class MainWindow(tk.Frame):
             return
         self.index_to_show.set(int(np.floor(event.ydata)))
         x, y, z = self.calibrator.reader_raw.pos_arr_absolute_accumulated[self.index_to_show.get()]
+        self.pos_x.set(x)
+        self.pos_y.set(y)
+        self.pos_z.set(z)
         self.update_plot()
 
     def key_pressed(self, event: matplotlib.backend_bases.KeyEvent) -> None:
