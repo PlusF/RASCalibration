@@ -15,8 +15,8 @@ class MainWindow(tk.Frame):
     def __init__(self, master: tk.Tk) -> None:
         super().__init__(master)
         self.master = master
-        self.width_master = 1350
-        self.height_master = 450
+        self.width_master = 1800
+        self.height_master = 1000
         self.master.geometry(f'{self.width_master}x{self.height_master}')
 
         self.calibrator = RayleighCalibrator()
@@ -31,9 +31,9 @@ class MainWindow(tk.Frame):
 
     def create_widgets(self) -> None:
         # canvas
-        self.width_canvas = 1000
-        self.height_canvas = 400
-        dpi = 50
+        self.width_canvas = 1450
+        self.height_canvas = 950
+        dpi = 60
         if os.name == 'posix':
             self.width_canvas /= 2
             self.height_canvas /= 2
@@ -255,6 +255,7 @@ class MainWindow(tk.Frame):
         if event.ydata is None:
             return
         self.index_to_show.set(int(np.floor(event.ydata)))
+        x, y, z = self.calibrator.reader_raw.pos_arr_absolute_accumulated[self.index_to_show.get()]
         self.update_plot()
 
     def key_pressed(self, event: matplotlib.backend_bases.KeyEvent) -> None:
