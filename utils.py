@@ -61,7 +61,9 @@ class FileReader:
         self.time: str = ''
         self.integration: float = 0
         self.accumulation: int = 0
+        self.use_interval: bool = True
         self.interval: float = 0
+        self.use_num_pos: bool = False
         self.num_pos: int = 0
         self.df: pd.DataFrame = pd.DataFrame()
 
@@ -90,8 +92,27 @@ class FileReader:
         self.time = extract_keyword(lines, 'time')
         self.integration = float(extract_keyword(lines, 'integration'))
         self.accumulation = int(extract_keyword(lines, 'accumulation'))
-        self.interval = float(extract_keyword(lines, 'interval'))
-        self.num_pos = int(extract_keyword(lines, 'num_pos'))
+        # RASのバージョンによって変わる．．．最悪
+        # v1だと "# interval: 00.000"
+        # v2だと "# interval: True 00.000"
+        interval_tmp = extract_keyword(lines, 'interval').split()
+        if len(interval_tmp) == 2:
+            use_interval = bool(interval_tmp[0])
+            interval = float(interval_tmp[1])
+        else:
+            use_interval = True
+            interval = float(interval_tmp[0])
+        self.interval = interval
+        self.use_interval = use_interval
+        num_pos_tmp = extract_keyword(lines, 'num_pos').split()
+        if len(num_pos_tmp) == 2:
+            use_num_pos = bool(num_pos_tmp[0])
+            num_pos = float(num_pos_tmp[1])
+        else:
+            use_num_pos = False
+            num_pos = float(num_pos_tmp[0])
+        self.num_pos = num_pos
+        self.use_num_pos = use_num_pos
 
         self.pos_arr = self.df.loc['pos_x':'pos_z'].values.T
         self.xdata = self.df.index[3:].values.astype(float)

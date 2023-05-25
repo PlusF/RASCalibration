@@ -16,7 +16,7 @@ class RayleighCalibrator(Calibrator):
         self.map_data: np.ndarray = None
         self.map_data_accumulated: np.ndarray = None
         self.bg_data_accumulated_smoothed: np.ndarray = None
-        self.num_pos: int = 0
+        self.data_length: int = 0
 
         self.set_measurement('Rayleigh')
 
@@ -25,7 +25,7 @@ class RayleighCalibrator(Calibrator):
         self.xdata = self.reader_raw.xdata.copy()
         self.map_data = self.reader_raw.spectra.copy()
         self.map_data_accumulated = self.reader_raw.spectra_accumulated.copy()
-        self.num_pos = self.reader_raw.spectra_accumulated.shape[0]
+        self.data_length = self.reader_raw.spectra_accumulated.shape[0]
 
     def load_bg(self, filename):
         self.reader_bg.load(filename)

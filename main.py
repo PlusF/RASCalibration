@@ -265,7 +265,7 @@ class MainWindow(tk.Frame):
             return
         # 上下ボタンを押したら表示するスペクトルを変更
         index_selected = self.index_to_show.get()
-        if event.key == 'up' and index_selected < self.calibrator.num_pos - 1:
+        if event.key == 'up' and index_selected < self.calibrator.data_length - 1:
             self.index_to_show.set(index_selected + 1)
         elif event.key == 'down' and 0 < index_selected:
             self.index_to_show.set(index_selected - 1)
@@ -299,7 +299,7 @@ class MainWindow(tk.Frame):
     def update_plot(self) -> None:
         index_to_show = self.index_to_show.get()
         # 範囲外のインデックスの場合は表示を更新しない
-        if not (0 <= index_to_show < self.calibrator.num_pos):
+        if not (0 <= index_to_show < self.calibrator.data_length):
             return
         self.horizontal_line_1.set_ydata(index_to_show)
         self.horizontal_line_2.set_ydata(index_to_show + 1)
@@ -445,7 +445,7 @@ class MainWindow(tk.Frame):
 
     def add_all(self) -> None:
         # すべてのインデックスをダウンロードリストに追加
-        all_indices = list(range(self.calibrator.num_pos))
+        all_indices = list(range(self.calibrator.data_length))
         self.file_to_download.set(all_indices)
 
     def delete(self, event=None) -> None:
@@ -468,7 +468,7 @@ class MainWindow(tk.Frame):
         f.write(f'# integration: {self.calibrator.reader_raw.integration}\n')
         f.write(f'# accumulation: {self.calibrator.reader_raw.accumulation}\n')
         f.write(f'# interval: {self.calibrator.reader_raw.interval}\n')
-        f.write(f'# num_pos: {self.calibrator.reader_raw.num_pos}\n')
+        f.write(f'# num_pos: {self.calibrator.reader_raw.data_length}\n')
 
     def save_each(self) -> None:
         # インデックスごとに保存する
