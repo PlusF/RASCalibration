@@ -62,6 +62,7 @@ class FileReader:
         self.integration: float = 0
         self.accumulation: int = 0
         self.interval: float = 0
+        self.num_pos: int = 0
         self.df: pd.DataFrame = pd.DataFrame()
 
         self.pos_arr: np.ndarray = None
@@ -77,6 +78,7 @@ class FileReader:
                f'integration: {self.integration}\n' \
                f'accumulation: {self.accumulation}\n' \
                f'interval: {self.interval}\n' \
+               f'num_pos: {self.num_pos}\n' \
                f'data:\n{self.df}' \
 
 
@@ -89,6 +91,7 @@ class FileReader:
         self.integration = float(extract_keyword(lines, 'integration'))
         self.accumulation = int(extract_keyword(lines, 'accumulation'))
         self.interval = float(extract_keyword(lines, 'interval'))
+        self.num_pos = int(extract_keyword(lines, 'num_pos'))
 
         self.pos_arr = self.df.loc['pos_x':'pos_z'].values.T
         self.xdata = self.df.index[3:].values.astype(float)
@@ -106,9 +109,9 @@ class FileReader:
         pos_check = self.pos_arr[0]
 
         for i, (pos, spec) in enumerate(zip(self.pos_arr, self.spectra)):
-            if self.pos_arr[i].all() == np.zeros(3).all():  # なぜ起きた？
-                print(f'Warning: skip dangerous data {i}')
-                continue
+            # if self.pos_arr[i].all() == np.zeros(3).all():  # なぜ起きた？
+            #     print(f'Warning: skip dangerous data {i}')
+            #     continue
             if i % self.accumulation == 0:
                 pos_check = self.pos_arr[i]
             else:

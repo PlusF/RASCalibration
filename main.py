@@ -468,6 +468,7 @@ class MainWindow(tk.Frame):
         f.write(f'# integration: {self.calibrator.reader_raw.integration}\n')
         f.write(f'# accumulation: {self.calibrator.reader_raw.accumulation}\n')
         f.write(f'# interval: {self.calibrator.reader_raw.interval}\n')
+        f.write(f'# num_pos: {self.calibrator.reader_raw.num_pos}\n')
 
     def save_each(self) -> None:
         # インデックスごとに保存する
