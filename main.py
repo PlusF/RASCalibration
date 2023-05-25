@@ -33,7 +33,7 @@ class MainWindow(tk.Frame):
         # canvas
         self.width_canvas = 1450
         self.height_canvas = 950
-        dpi = 60
+        dpi = 75
         if os.name == 'posix':
             self.width_canvas /= 2
             self.height_canvas /= 2
@@ -139,8 +139,8 @@ class MainWindow(tk.Frame):
         # frame_download
         # ダウンロード関連のウェジェット
         self.file_to_download = tk.Variable(value=[])
-        self.listbox = tk.Listbox(frame_download, listvariable=self.file_to_download, selectmode=tk.MULTIPLE, width=8,
-                                  height=6, justify=tk.CENTER)
+        self.listbox = tk.Listbox(frame_download, listvariable=self.file_to_download, selectmode=tk.EXTENDED, width=8,
+                                  height=10, justify=tk.CENTER)
         self.listbox.bind('<Button-2>', self.delete)
         self.listbox.bind('<Button-3>', self.delete)
         scrollbar = tk.Scrollbar(frame_download)
@@ -148,15 +148,19 @@ class MainWindow(tk.Frame):
         scrollbar.config(command=self.listbox.yview)
         self.button_add = tk.Button(frame_download, text='ADD', command=self.add, width=8)
         self.button_add_all = tk.Button(frame_download, text='ADD ALL', command=self.add_all, width=8)
+        self.button_delete = tk.Button(frame_download, text='DELETE', command=self.delete, width=8)
+        self.button_delete_all = tk.Button(frame_download, text='DELETE ALL', command=self.delete_all, width=8)
         self.button_save_each = tk.Button(frame_download, text='SAVE EACH', command=self.save_each, width=8)
         self.button_save_map = tk.Button(frame_download, text='SAVE MAP', command=self.save_map, width=8)
 
-        self.listbox.grid(row=0, column=0, rowspan=4)
-        scrollbar.grid(row=0, column=1, rowspan=4)
+        self.listbox.grid(row=0, column=0, rowspan=6)
+        scrollbar.grid(row=0, column=1, rowspan=6)
         self.button_add.grid(row=0, column=2)
         self.button_add_all.grid(row=1, column=2)
-        self.button_save_each.grid(row=2, column=2)
-        self.button_save_map.grid(row=3, column=2)
+        self.button_delete.grid(row=2, column=2)
+        self.button_delete_all.grid(row=3, column=2)
+        self.button_save_each.grid(row=4, column=2)
+        self.button_save_map.grid(row=5, column=2)
 
         # frame plot
         # マッピングのカラーバーの設定．最小値最大値に加え，マッピングのカラーマップも設定できる．X軸をeV表記にしたり，AutoScaleのOn/Offも
@@ -239,7 +243,7 @@ class MainWindow(tk.Frame):
         # 二重にbackground correctionやcosmic ray removalをかけないよう，まず生データをセットする
         self.calibrator.reset_map_data()
         if self.do_background_correction.get():
-            if self.filename_bg.get() == 'please drag & drop!':
+            if self.calibrator.reader_bg.filename == '':
                 messagebox.showerror(title='Error', message='No background data.')
                 return
             self.calibrator.correct_background()
@@ -253,6 +257,9 @@ class MainWindow(tk.Frame):
     def on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
         # マップをクリックして表示するスペクトルを選択
         if event.ydata is None:
+            return
+        # 右側のプロットには反応させない
+        if event.x > self.width_canvas / 2:
             return
         self.index_to_show.set(int(np.floor(event.ydata)))
         self.update_position_info()
@@ -326,7 +333,7 @@ class MainWindow(tk.Frame):
         self.canvas.draw()
 
     def show_bg(self, event=None):
-        if self.filename_bg.get() == 'please drag & drop!':
+        if self.calibrator.reader_bg.filename == '':
             return
         plt.autoscale(True)
         if self.line:
@@ -345,7 +352,7 @@ class MainWindow(tk.Frame):
         self.canvas.draw()
 
     def show_ref(self, event=None):
-        if self.filename_ref.get() == 'please drag & drop!':
+        if self.calibrator.reader_ref.filename == '':
             return
         plt.autoscale(True)
         if self.line:
@@ -395,6 +402,7 @@ class MainWindow(tk.Frame):
             self.color_range_1.set(round(self.calibrator.map_data_accumulated.min()))
             self.color_range_2.set(round(self.calibrator.map_data_accumulated.max()))
 
+            self.reset_when_drop_raw()
             self.reload()
             self.imshow()
             self.update_plot()
@@ -407,7 +415,7 @@ class MainWindow(tk.Frame):
             self.ax[1].plot(self.calibrator.xdata, self.calibrator.bg_data_accumulated_smoothed, color='k', label='background')
             self.canvas.draw()
 
-            if self.filename_raw.get() != 'please drag & drop!':
+            if self.calibrator.reader_raw.filename != '':
                 self.imshow()
         else:  # reference data
             self.calibrator.load_ref(filename)
@@ -432,6 +440,13 @@ class MainWindow(tk.Frame):
         # 離れたらウィジェットを非表示に
         self.canvas_drop.place_forget()
 
+    def reset_when_drop_raw(self):
+        self.do_background_correction.set(False)
+        self.cosmic_ray_removal.set(False)
+        self.smoothing.set(False)
+        self.ev.set(False)
+        self.delete_all()
+
     def add(self) -> None:
         # 保存したいスペクトルを追加
         # ここではインデックスを追加し，SAVE EACHボタンが押されたらインデックスに基づいてデータが保存される
@@ -440,6 +455,10 @@ class MainWindow(tk.Frame):
             indices = []
         else:
             indices = list(indices)
+
+        # 既に存在する場合は追加しない
+        if self.index_to_show.get() in indices:
+            return
         indices.append(self.index_to_show.get())
         self.file_to_download.set(indices)
 
@@ -454,6 +473,11 @@ class MainWindow(tk.Frame):
             return
         for idx in sorted(list(self.listbox.curselection()), reverse=True):
             self.listbox.delete(idx)
+
+    def delete_all(self) -> None:
+        # すべて削除
+        for _ in range(len(self.file_to_download.get())):
+            self.listbox.delete(0)
 
     def write_header(self, f):
         # スペクトルのデータを書き出す際，ファイルの最初のほうにメタデータを追加
@@ -472,8 +496,8 @@ class MainWindow(tk.Frame):
 
     def save_each(self) -> None:
         # インデックスごとに保存する
-
         if not self.file_to_download.get():
+            messagebox.showinfo('Info', 'No file selected.')
             return
 
         folder_to_save = filedialog.askdirectory(initialdir=self.folder)
@@ -495,6 +519,10 @@ class MainWindow(tk.Frame):
                     f.write(','.join(d) + '\n')
 
     def save_map(self) -> None:
+        if self.calibrator.reader_raw.filename == '':
+            messagebox.showinfo('Info', 'No file.')
+            return
+
         # マップデータとして保存
         filename = filedialog.asksaveasfilename(initialdir=self.folder)
         if not filename:
