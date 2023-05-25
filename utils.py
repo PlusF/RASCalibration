@@ -55,6 +55,24 @@ def smooth(spectrum, width):
         return np.array(spectrum_smoothed)
 
 
+def process_interval_and_num_pos(value_str):
+    # v1だと "# interval: 00.000"
+    # v2だと "# interval: True 00.000"
+    if value_str is None:
+        value = 0
+        use_this = False
+    else:
+        value_str_list = value_str.split()
+        # v1の場合
+        if len(value_str_list) == 2:
+            value = float(value_str_list[1])
+            use_this = bool(value_str_list[0])
+        else:  # v2の場合
+            value = float(value_str_list[0])
+            use_this = True
+    return value, use_this
+
+
 class FileReader:
     def __init__(self):
         self.filename: str = ''
@@ -93,26 +111,8 @@ class FileReader:
         self.integration = float(extract_keyword(lines, 'integration'))
         self.accumulation = int(extract_keyword(lines, 'accumulation'))
         # RASのバージョンによって変わる．．．最悪
-        # v1だと "# interval: 00.000"
-        # v2だと "# interval: True 00.000"
-        interval_tmp = extract_keyword(lines, 'interval').split()
-        if len(interval_tmp) == 2:
-            use_interval = bool(interval_tmp[0])
-            interval = float(interval_tmp[1])
-        else:
-            use_interval = True
-            interval = float(interval_tmp[0])
-        self.interval = interval
-        self.use_interval = use_interval
-        num_pos_tmp = extract_keyword(lines, 'num_pos').split()
-        if len(num_pos_tmp) == 2:
-            use_num_pos = bool(num_pos_tmp[0])
-            num_pos = float(num_pos_tmp[1])
-        else:
-            use_num_pos = False
-            num_pos = float(num_pos_tmp[0])
-        self.num_pos = num_pos
-        self.use_num_pos = use_num_pos
+        self.interval, self.use_interval = process_interval_and_num_pos(extract_keyword(lines, 'interval'))
+        self.num_pos, self.use_num_pos = process_interval_and_num_pos(extract_keyword(lines, 'num_pos'))
 
         self.pos_arr = self.df.loc['pos_x':'pos_z'].values.T
         self.xdata = self.df.index[3:].values.astype(float)
