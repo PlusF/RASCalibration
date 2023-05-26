@@ -15,8 +15,12 @@ class MainWindow(tk.Frame):
     def __init__(self, master: tk.Tk) -> None:
         super().__init__(master)
         self.master = master
-        self.width_master = 1800
-        self.height_master = 1000
+        if os.name == 'nt':
+            self.width_master = 1800
+            self.height_master = 1000
+        else:
+            self.width_master = 1350
+            self.height_master = 600
         self.master.geometry(f'{self.width_master}x{self.height_master}')
 
         self.calibrator = RayleighCalibrator()
@@ -31,12 +35,14 @@ class MainWindow(tk.Frame):
 
     def create_widgets(self) -> None:
         # canvas
-        self.width_canvas = 1450
-        self.height_canvas = 950
-        dpi = 75
-        if os.name == 'posix':
-            self.width_canvas /= 2
-            self.height_canvas /= 2
+        if os.name == 'nt':
+            self.width_canvas = 1450
+            self.height_canvas = 950
+            dpi = 75
+        else:
+            self.width_canvas = 475
+            self.height_canvas = 275
+            dpi = 50
         fig, self.ax = plt.subplots(1, 2, figsize=(self.width_canvas / dpi, self.height_canvas / dpi), dpi=dpi)
         self.canvas = FigureCanvasTkAgg(fig, self.master)
         self.canvas.get_tk_widget().grid(row=0, column=0, rowspan=3)
@@ -259,7 +265,9 @@ class MainWindow(tk.Frame):
         if event.ydata is None:
             return
         # 右側のプロットには反応させない
-        if event.x > self.width_canvas / 2:
+        if os.name == 'nt' and event.x > self.width_canvas / 2:
+            return
+        if os.name == 'posix' and event.x > self.width_canvas:
             return
         self.index_to_show.set(int(np.floor(event.ydata)))
         self.update_position_info()

@@ -69,19 +69,6 @@ class RayleighCalibrator(Calibrator):
         self.map_data = smooth(self.map_data, 100)
         self.map_data_accumulated = smooth(self.map_data_accumulated, 100)
 
-    def show_fit_result(self, ax: plt.Axes) -> None:
-        ax.plot(self.xdata, self.ydata, color='k')
-        ymin, ymax = ax.get_ylim()
-
-        for i, (fitted_x, true_x) in enumerate(zip(self.fitted_x, self.found_x_true)):
-            if i == 0:
-                ax.vlines(fitted_x, ymin, ymax, color='r', linewidth=1, label='Found peak')
-                ax.vlines(true_x, ymin, ymax, color='b', linewidth=1, label='True value')
-            else:
-                ax.vlines(fitted_x, ymin, ymax, color='r', linewidth=1)
-                ax.vlines(true_x, ymin, ymax, color='b', linewidth=1)
-        ax.legend()
-
     def imshow(self, ax: plt.Axes, color_range: list, cmap: str, ev=False) -> None:
         mesh = ax.pcolormesh(self.map_data_accumulated, cmap=cmap)
         mesh.set_clim(*color_range)
